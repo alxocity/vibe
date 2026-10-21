@@ -1,5 +1,7 @@
 import { calendar, echoes, lines, playback, solo, tray } from "./catalog.js";
+import { glyphTree, scenePlan, sceneTree } from "./draw.js";
 import { el, tx } from "./dom.js";
+import { paint } from "./paint.js";
 import { echoId, score } from "./score.js";
 import { bindInput } from "./input.js";
 import { echoHref, linksFor } from "./nav.js";
@@ -136,6 +138,20 @@ function streakNode(today) {
   return el("p", { class: "streak" }, [tx("Streak " + String(count))]);
 }
 
+function sceneLabel(order) {
+  if (order.length === 0) return "Picture";
+  const parts = [];
+  for (let i = 0; i < order.length; i += 1) parts.push(flat.labels[order[i]] || order[i]);
+  return "Picture of " + parts.join(", ");
+}
+
+function sceneNode(plan) {
+  return el("figure", { class: "scene" }, [
+    paint(sceneTree(plan)),
+    el("figcaption", {}, [tx(sceneLabel(plan.order))]),
+  ]);
+}
+
 function rubric(row) {
   return el("dl", { class: "rubric" }, [
     el("dt", {}, [tx("Required")]),
@@ -194,8 +210,7 @@ function trayNodes() {
         "data-focus-id": "block-" + block.id,
         "aria-pressed": on ? "true" : "false",
       });
-      button.append(tx(block.label));
-      if (on) button.append(el("span", { class: "mark" }, [tx("picked")]));
+      button.append(paint(glyphTree(block.id)), tx(block.label));
       button.addEventListener("click", () => toggle(block.id));
       grid.append(button);
     }
@@ -239,6 +254,7 @@ function playNodes(row) {
     el("h2", {}, [tx(mode === "solo" ? row.title : "Echo " + pageId)]),
     el("p", { class: "situation" }, [tx(row.situation)]),
     rubric(row),
+    sceneNode(scenePlan(picked, flat.ids)),
   ];
   const trayParts = trayNodes();
   for (let i = 0; i < trayParts.length; i += 1) nodes.push(trayParts[i]);

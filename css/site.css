@@ -4,6 +4,10 @@
   --paper: #e7dcc8;
   --card: #f7f1e4;
   --focus: #0b3a5b;
+  --swatch-red: #c23b2e;
+  --swatch-blue: #1f5f99;
+  --swatch-purple: #6a3d8f;
+  --swatch-gold: #b86a12;
 }
 
 * { box-sizing: border-box; }
@@ -99,9 +103,35 @@ p { margin: 0.4rem 0; }
   text-decoration: none;
 }
 
-.tile { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.tile.is-picked { background: var(--ink); color: var(--card); }
-.mark { display: block; margin-top: 0.15rem; font-size: 0.8rem; letter-spacing: 0.04em; }
+.tile { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 4.25rem; gap: 0.25rem; }
+.tile.is-picked {
+  background: var(--ink);
+  color: var(--card);
+  outline: 3px solid var(--card);
+  outline-offset: -5px;
+}
+.tile.is-picked [data-swatch="red"],
+.tile.is-picked [data-swatch="blue"],
+.tile.is-picked [data-swatch="purple"] {
+  stroke: var(--card);
+  stroke-width: 2;
+}
+.tile svg { width: 2.75rem; height: 2.75rem; pointer-events: none; }
+
+.scene { margin: 0.75rem 0 0.25rem; }
+.scene svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--card);
+  border: 2px solid var(--ink);
+}
+.scene figcaption { margin-top: 0.35rem; }
+
+svg [data-swatch="red"] { fill: var(--swatch-red); }
+svg [data-swatch="blue"] { fill: var(--swatch-blue); }
+svg [data-swatch="purple"] { fill: var(--swatch-purple); }
+svg [data-swatch="gold"] { fill: var(--swatch-gold); }
 
 .action, .link { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 0.75rem; }
 .action.is-quiet { background: transparent; border-style: dashed; }
@@ -143,6 +173,17 @@ input:focus,
 
 @media (min-width: 40rem) {
   .tray { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+@media (forced-colors: active) {
+  .scene svg { background: Canvas; border-color: CanvasText; }
+  svg [data-swatch] { fill: CanvasText; }
+  .tile.is-picked {
+    background: Highlight;
+    color: HighlightText;
+    outline: 3px solid Highlight;
+  }
+  .tile.is-picked [data-swatch] { fill: HighlightText; stroke: HighlightText; }
 }
 
 @media (prefers-reduced-motion: reduce) {
