@@ -1,0 +1,94 @@
+{
+  "items": [
+    {
+      "id": 1,
+      "title": "Cross the river",
+      "situation": "The path stops at a river. Pack the map and the shield. Leave the sword on the bank.",
+      "required": ["map", "shield"],
+      "anyOf": [],
+      "forbidden": ["sword"],
+      "works": "The map and the shield are packed for the river."
+    },
+    {
+      "id": 2,
+      "title": "The dragon on the path",
+      "situation": "The picture includes the dragon and quiet, plus one of potion, map, or shield. The sword is not in the picture.",
+      "required": ["dragon", "quiet"],
+      "anyOf": ["potion", "map", "shield"],
+      "forbidden": ["sword"],
+      "works": "The dragon is in the picture. Quiet is packed with it."
+    },
+    {
+      "id": 3,
+      "title": "Bake the extra pizza",
+      "situation": "Bake pizza in the oven, and pack extra. The fridge stays shut.",
+      "required": ["pizza", "oven", "extra"],
+      "anyOf": [],
+      "forbidden": ["fridge"],
+      "works": "The pizza goes in the oven, with extra."
+    },
+    {
+      "id": 4,
+      "title": "Keep the oven hot",
+      "situation": "Keep it hot in the oven. The fridge stays shut.",
+      "required": ["oven", "hot"],
+      "anyOf": [],
+      "forbidden": ["fridge"],
+      "works": "The oven is hot."
+    },
+    {
+      "id": 5,
+      "title": "Light the quiet office",
+      "situation": "The room needs the lamp and quiet.",
+      "required": ["lamp", "quiet"],
+      "anyOf": [],
+      "forbidden": [],
+      "works": "The lamp is on. Quiet is in the room."
+    },
+    {
+      "id": 6,
+      "title": "Stock the fridge",
+      "situation": "Stock the fridge with pizza, a slice, or a spoon. Leave the dragon and the sword out.",
+      "required": ["fridge"],
+      "anyOf": ["pizza", "slice", "spoon"],
+      "forbidden": ["dragon", "sword"],
+      "works": "The fridge is stocked."
+    },
+    {
+      "id": 7,
+      "title": "The quest past the star",
+      "situation": "The quest goes past the star. Pack the quest, the map, the star, and the castle.",
+      "required": ["quest", "map", "star", "castle"],
+      "anyOf": [],
+      "forbidden": [],
+      "works": "The quest follows the map past the star to the castle."
+    },
+    {
+      "id": 8,
+      "title": "The crown in the castle",
+      "situation": "The crown is in the castle. Pack the crown and the castle, and either the star or purple. The sword stays out.",
+      "required": ["crown", "castle"],
+      "anyOf": ["star", "purple"],
+      "forbidden": ["sword"],
+      "works": "The crown is in the castle."
+    },
+    {
+      "id": 9,
+      "title": "Stir the potion",
+      "situation": "Stir the potion with the spoon. The sword stays out.",
+      "required": ["potion", "spoon"],
+      "anyOf": [],
+      "forbidden": ["sword"],
+      "works": "The spoon stirs the potion."
+    },
+    {
+      "id": 10,
+      "title": "Busy and quiet at the window",
+      "situation": "The window is both busy and quiet.",
+      "required": ["window", "busy", "quiet"],
+      "anyOf": [],
+      "forbidden": [],
+      "works": "The window is busy and quiet."
+    }
+  ]
+}
