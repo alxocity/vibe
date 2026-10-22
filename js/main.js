@@ -62,6 +62,7 @@ const activeSave = mode === "solo" ? soloSave : dailySave;
 let picked = [];
 let outcome = null;
 let resultOpen = false;
+let keyOpen = false;
 let gate = mode === "echo" ? echoGate(todayEcho()) : null;
 let focusAfter = null;
 let activeTab = tray.groups.length ? tray.groups[0].id : "";
@@ -97,6 +98,12 @@ const resultLive = el("p", {
 if (outcome) resultLive.textContent = outcome.line;
 const resultHold = el("div", { class: "result-live" });
 resultHold.append(resultLive);
+const resultPanel = el("div", { id: "result-panel", class: "result-slot" });
+resultPanel.hidden = true;
+resultPanel.append(resultHold);
+const resultRoot = el("div", { id: "result-root" });
+resultRoot.append(resultPanel);
+document.body.append(resultRoot);
 
 function seedRecent() {
   const next = [];
@@ -341,6 +348,7 @@ function clearButton() {
     recent = [];
     outcome = null;
     resultOpen = false;
+    keyOpen = false;
     marks = null;
     promptOpen = true;
     focusAfter = "clear";
@@ -415,6 +423,7 @@ function toggle(id, fromRecent) {
   if (firstPick) promptOpen = false;
   outcome = null;
   resultOpen = false;
+  keyOpen = false;
   marks = null;
   activeSave.setPicked(pageId, picked);
   focusAfter = (fromRecent ? "recent-" : "block-") + id;
@@ -440,6 +449,7 @@ function onCheck() {
     if (gate) {
       outcome = null;
       resultOpen = false;
+      keyOpen = false;
       marks = null;
       focusAfter = "copy-link";
       render();
@@ -451,6 +461,7 @@ function onCheck() {
   if (!line) return;
   outcome = { status: result.status, line };
   resultOpen = true;
+  keyOpen = false;
   marks = checkMarks(picked, puzzle);
   if (result.status === "pass") activeSave.markDone(pageId);
   shakeOnce = result.status !== "pass";
@@ -479,6 +490,17 @@ function resultTally(row) {
   return String(got) + "/" + String(need);
 }
 
+function resultScore(row) {
+  if (marks && marks.wrong && marks.wrong.length > 0 && (!outcome || outcome.status !== "pass")) return "";
+  return resultTally(row);
+}
+
+function resultPhrase(pass, score) {
+  const word = pass ? "Clear" : "Miss";
+  if (!score) return word;
+  return word + " " + score;
+}
+
 function focusResult(id) {
   window.setTimeout(() => {
     const node = document.querySelector('[data-focus-id="' + id + '"]');
@@ -489,6 +511,7 @@ function focusResult(id) {
 function dismissResult() {
   if (!outcome || !resultOpen) return;
   resultOpen = false;
+  keyOpen = false;
   focusAfter = "result-badge";
   render();
   focusResult("result-badge");
@@ -497,9 +520,9 @@ function dismissResult() {
 function showResult() {
   if (!outcome) return;
   resultOpen = true;
-  focusAfter = "result-close";
+  focusAfter = "result-badge";
   render();
-  focusResult("result-close");
+  focusResult("result-badge");
 }
 
 function pickedCount() {
@@ -670,63 +693,94 @@ function inventoryNode(extras) {
   return inventory;
 }
 
-function resultBadge(pass, score) {
+function resultToggle(pass, score) {
+  const phrase = resultPhrase(pass, score);
+  const tone = pass ? "is-pass" : "is-miss";
+  const kids = [];
+  if (resultOpen) kids.push(tx("Close"));
+  else {
+    kids.push(el("span", { class: "result-mark", "aria-hidden": "true" }, [tx(pass ? "Clear" : "Miss")]));
+    if (score) kids.push(el("span", { class: "result-score" }, [tx(score)]));
+  }
   const button = el(
     "button",
     {
       type: "button",
-      class: pass ? "result-badge is-pass" : "result-badge is-miss",
+      class: resultOpen ? "result-badge result-close " + tone : "result-badge " + tone,
       "data-move": "1",
       "data-focus-id": "result-badge",
       "aria-expanded": resultOpen ? "true" : "false",
       "aria-controls": "result-panel",
-      "aria-label": (pass ? "Clear " : "Miss ") + score + ". Show result",
+      "aria-label": resultOpen ? "Close result" : phrase + ". Show result",
     },
-    [
-      el("span", { class: "result-mark", "aria-hidden": "true" }, [tx(pass ? "Clear" : "Miss")]),
-      el("span", { class: "result-score" }, [tx(score)]),
-    ],
+    kids,
   );
-  button.addEventListener("click", () => showResult());
+  button.addEventListener("click", () => {
+    if (resultOpen) dismissResult();
+    else showResult();
+  });
   return button;
 }
 
-function resultCluster(row, nextLink) {
-  if (!outcome || !row) return null;
-  liveText(resultLive, outcome.line);
-  const pass = outcome.status === "pass";
-  const score = resultTally(row);
-  const slot = el("div", {
-    id: "result-panel",
-    class: resultOpen ? "result-slot is-open result-card " + (pass ? "is-pass" : "is-miss") : "result-slot",
-  });
-  if (!resultOpen) {
-    slot.append(resultBadge(pass, score), resultHold);
-    return slot;
-  }
-  const close = el(
+function resultKeyButton() {
+  const button = el(
     "button",
     {
       type: "button",
-      class: "result-close",
+      class: "result-key",
       "data-move": "1",
-      "data-focus-id": "result-close",
-      "aria-label": "Close result",
+      "data-focus-id": "result-key",
+      "aria-expanded": keyOpen ? "true" : "false",
+      "aria-controls": "result-key-panel",
     },
-    [tx("Close")],
+    [tx(keyOpen ? "Hide key" : "Show key")],
   );
-  close.addEventListener("click", () => dismissResult());
-  const detail = el("div", { class: "result-detail" }, [rubric(row)]);
-  if (nextLink) detail.append(nextLink);
-  slot.append(
-    el("div", { class: "result-head" }, [
-      el("p", { class: "result-kicker" }, [tx(pass ? "Stage clear" : "Try again")]),
-      close,
-    ]),
-    resultHold,
-    detail,
-  );
-  return slot;
+  button.addEventListener("click", () => {
+    keyOpen = !keyOpen;
+    focusAfter = "result-key";
+    render();
+  });
+  return button;
+}
+
+function clearPanelExtras() {
+  for (let i = resultPanel.childNodes.length - 1; i >= 0; i -= 1) {
+    if (resultPanel.childNodes[i] !== resultHold) resultPanel.removeChild(resultPanel.childNodes[i]);
+  }
+}
+
+function resultKicker(pass, score) {
+  const word = pass ? "Clear" : "Miss";
+  const kids = [el("span", { class: "result-word" }, [tx(word)])];
+  if (score) kids.push(el("span", { class: "result-fraction" }, [tx(" " + score)]));
+  return el("p", { class: "result-kicker" }, kids);
+}
+
+function syncResult(row, nextLink) {
+  if (!outcome || !row) {
+    resultPanel.hidden = true;
+    clearPanelExtras();
+    return;
+  }
+  liveText(resultLive, outcome.line);
+  const pass = outcome.status === "pass";
+  const score = resultScore(row);
+  if (resultHold.parentElement !== resultPanel) resultPanel.insertBefore(resultHold, resultPanel.firstChild);
+  resultPanel.className = resultOpen
+    ? "result-slot is-open result-card " + (pass ? "is-pass" : "is-miss") + (keyOpen ? " is-key" : "")
+    : "result-slot";
+  resultPanel.hidden = false;
+  clearPanelExtras();
+  if (!resultOpen) {
+    resultPanel.append(resultToggle(pass, score));
+    return;
+  }
+  const detail = el("div", { id: "result-key-panel", class: "result-detail" });
+  if (keyOpen) {
+    detail.append(rubric(row));
+    if (nextLink) detail.append(nextLink);
+  } else detail.hidden = true;
+  resultPanel.append(detail, resultKicker(pass, score), resultKeyButton(), resultToggle(pass, score));
 }
 
 function shareNode() {
@@ -771,6 +825,7 @@ function playShell(row, extras) {
     if (node.getAttribute && node.getAttribute("data-focus-id") === "next") nextLink = node;
     else menuExtras.push(node);
   }
+  syncResult(row, nextLink);
   return el("div", { class: trayOpen ? "play is-open" : "play" }, [
     el("div", { class: "stage" }, [
       sceneNode(currentPlan()),
@@ -778,7 +833,6 @@ function playShell(row, extras) {
         el("h2", {}, [tx(mode === "solo" ? row.title : "Echo " + pageId)]),
         el("div", { class: promptOpen ? "dialogue is-open" : "dialogue" }, [promptButton, situation]),
       ]),
-      resultCluster(row, nextLink),
       el("div", { class: "hud-actions" }, [bagButton(), checkButton()]),
     ]),
     inventoryNode(menuExtras),
@@ -855,9 +909,10 @@ function render() {
   for (let i = 0; i < nodes.length; i += 1) app.append(nodes[i]);
   const playing = Boolean(puzzle) && !gate && (mode === "solo" || mode === "echo");
   app.classList.toggle("is-play", playing);
-  const outside = app.querySelectorAll(".mast, .hud, .scene, .result-slot");
+  const outside = app.querySelectorAll(".mast, .hud, .scene");
   const modal = playing && bagModal();
   for (let i = 0; i < outside.length; i += 1) outside[i].inert = modal;
+  resultPanel.inert = modal;
   if (shakeOnce) {
     shakeOnce = false;
     const stage = app.querySelector(".stage");
@@ -869,7 +924,7 @@ function render() {
     }
   }
   if (keep) {
-    const next = app.querySelector('[data-focus-id="' + keep + '"]');
+    const next = document.querySelector('[data-focus-id="' + keep + '"]');
     if (next) {
       next.focus();
       if (keep === "copy-link" && next.select) next.select();
