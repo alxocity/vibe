@@ -1,5 +1,5 @@
 import { calendar, echoes, lines, playback, solo, tray } from "./catalog.js";
-import { glyphTree, scenePlan, sceneTree } from "./draw.js";
+import { glyphTree, scenePlan, sceneTree, shareGlyph } from "./draw.js";
 import { ghostIds, showGhosts } from "./ghosts.js";
 import { el, tx } from "./dom.js";
 import { ACTION_MS, flightPlan, playFly } from "./motion.js";
@@ -84,6 +84,7 @@ if (activeSave && puzzle && !gate) {
 
 const pickedLive = el("p", { id: "picked-count", class: "picked", role: "status", "aria-live": "polite" });
 pickedLive.textContent = "Picked " + String(picked.length);
+const shareLive = el("p", { id: "share-status", class: "share-status", role: "status", "aria-live": "polite" });
 
 const resultLive = el("p", {
   role: "status",
@@ -219,6 +220,109 @@ function field(id, label, value, hint) {
 
 function copyLink() {
   return field("copy-link", "Copy link", pageAddress(window.location), "Select the address and copy it.");
+}
+
+let copyNote = 0;
+let copyFailed = false;
+
+function noteCopied() {
+  liveText(shareLive, "Link copied");
+  const token = ++copyNote;
+  window.setTimeout(() => {
+    if (token !== copyNote) return;
+    if (shareLive.textContent !== "Link copied") return;
+    liveText(shareLive, "");
+  }, 1400);
+}
+
+function failCopy() {
+  if (!trayOpen) {
+    liveText(shareLive, "Couldn't copy. Select the address.");
+    return;
+  }
+  copyFailed = true;
+  focusAfter = "copy-link";
+  render();
+  liveText(shareLive, "Couldn't copy. Select the address.");
+}
+
+function writeSelection(url) {
+  const input = el("input", { type: "text", class: "copy-hold", readonly: "readonly", tabindex: "-1", "aria-hidden": "true" });
+  input.readOnly = true;
+  input.value = url;
+  const back = document.activeElement;
+  document.body.append(input);
+  input.focus();
+  input.select();
+  let ok = false;
+  try {
+    ok = document.execCommand("copy") === true;
+  } catch (error) {
+    ok = false;
+  }
+  input.remove();
+  if (back && back !== input && back.isConnected) back.focus();
+  return ok;
+}
+
+function copyUrl(url) {
+  if (writeSelection(url)) {
+    noteCopied();
+    return;
+  }
+  failCopy();
+}
+
+function sharePage(url) {
+  const share = navigator.share;
+  if (typeof share !== "function") {
+    copyUrl(url);
+    return;
+  }
+  let pending = null;
+  try {
+    pending = share.call(navigator, { url: url });
+  } catch (error) {
+    if (error && error.name === "AbortError") return;
+    copyUrl(url);
+    return;
+  }
+  if (!pending || typeof pending.then !== "function") {
+    copyUrl(url);
+    return;
+  }
+  pending.then(() => {}, (error) => {
+    if (error && error.name === "AbortError") return;
+    failCopy();
+  });
+}
+
+function shareName() {
+  if (typeof navigator.share === "function") return "Share link";
+  return "Copy link";
+}
+
+function shareButton() {
+  const url = pageAddress(window.location);
+  const name = shareName();
+  const button = el(
+    "button",
+    {
+      type: "button",
+      class: "share",
+      "data-move": "1",
+      "data-focus-id": "share-link",
+      "aria-label": name,
+      title: name,
+    },
+    [paint(shareGlyph())],
+  );
+  button.addEventListener("click", () => sharePage(url));
+  return button;
+}
+
+function shareControl() {
+  return el("div", { class: "share-wrap" }, [shareButton(), shareLive]);
 }
 
 function clearButton() {
@@ -440,6 +544,10 @@ function categoryGrids() {
 
 function setTray(open, focusId) {
   if (open && !sideBySide()) promptOpen = false;
+  if (!open) {
+    copyFailed = false;
+    if (shareLive.textContent === "Couldn't copy. Select the address.") liveText(shareLive, "");
+  }
   trayOpen = open;
   focusAfter = focusId;
   render();
@@ -492,10 +600,11 @@ function inventoryNode(extras) {
     const id = node.getAttribute && node.getAttribute("data-focus-id");
     const nested = node.querySelector ? node.querySelector("[data-focus-id]") : null;
     const focus = id || (nested ? nested.getAttribute("data-focus-id") : "");
-    if (focus === "copy-link" || focus === "clear") actionKids.push(node);
+    if (focus === "share-link" || focus === "copy-link" || focus === "clear") actionKids.push(node);
     else extraKids.push(node);
   }
   if (extraKids.length > 0) kids.push(el("div", { class: "dock-extra" }, extraKids));
+  if (copyFailed) actionKids.push(field("copy-link", "Copy link", pageAddress(window.location), "Select the address and copy it."));
   if (actionKids.length > 0) kids.push(el("div", { class: "bag-actions" }, actionKids));
   const dockAttrs = {
     class: "dock",
@@ -633,7 +742,7 @@ function view() {
     }
     extras.push(shareNode());
     if (mode === "echo") extras.push(streakNode(todayEcho()));
-    extras.push(copyLink());
+    extras.push(shareControl());
     extras.push(clearButton());
     nodes.push(playShell(puzzle, extras));
   }
@@ -664,7 +773,10 @@ function render() {
   }
   if (keep) {
     const next = app.querySelector('[data-focus-id="' + keep + '"]');
-    if (next) next.focus();
+    if (next) {
+      next.focus();
+      if (keep === "copy-link" && next.select) next.select();
+    }
   }
 }
 

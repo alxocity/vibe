@@ -501,21 +501,112 @@ input:focus,
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  align-items: stretch;
+  align-items: center;
   padding: 0.35rem 0.45rem 0.55rem;
 }
-.bag-actions .copy,
+.share {
+  position: relative;
+  flex: 0 0 auto;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.share svg { width: 1.25rem; height: 1.25rem; display: block; }
+.share-wrap {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+}
+.share-status {
+  margin: 0;
+  min-width: 0;
+  font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.share-status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+.share:hover::after,
+.share:focus-visible::after {
+  content: attr(title);
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  bottom: calc(100% + 0.3rem);
+  padding: 0.15rem 0.35rem;
+  background: var(--ink);
+  color: var(--card);
+  font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.copy-hold {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0.01;
+}
 .bag-actions .action {
   flex: 1 1 40%;
   width: auto;
   min-width: 0;
   margin: 0;
 }
+.bag-actions .copy {
+  flex: 1 1 100%;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0.35rem 0.45rem 0.4rem;
+  background: var(--card);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
 .bag-actions .copy span { font-size: 0.72rem; margin-bottom: 0.15rem; }
 .bag-actions .copy input {
-  min-height: 2rem;
-  padding: 0.25rem 0.4rem;
-  font-size: 0.75rem;
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.45rem;
+  font-size: 0.8rem;
+  background: var(--paper);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  user-select: text;
 }
 .bag-actions .hint { margin: 0.15rem 0 0; font-size: 0.68rem; }
 .bag-actions .action {
@@ -532,6 +623,7 @@ input:focus,
 .chamber.is-play .tile,
 .chamber.is-play .tab,
 .chamber.is-play .bag,
+.chamber.is-play .share,
 .chamber.is-play .prompt-toggle,
 .chamber.is-play .hud-actions .action,
 .chamber.is-play > .link {
@@ -540,6 +632,7 @@ input:focus,
 .chamber.is-play .tile:active,
 .chamber.is-play .tab:active,
 .chamber.is-play .bag:active,
+.chamber.is-play .share:active,
 .chamber.is-play .prompt-toggle:active,
 .chamber.is-play .hud-actions .action:active,
 .chamber.is-play > .link:active {
@@ -749,6 +842,9 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
   .situation,
   .prompt-toggle,
   .bag,
+  .share,
+  .share-status,
+  .bag-actions .copy,
   .dock,
   .chamber.is-play h2,
   .chamber.is-play > .link {

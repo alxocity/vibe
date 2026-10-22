@@ -322,6 +322,18 @@ export function sceneTree(plan) {
   };
 }
 
+export function shareGlyph() {
+  return {
+    tag: "svg",
+    attrs: { viewBox: "0 0 24 24", "aria-hidden": "true", focusable: "false" },
+    kids: [
+      stroke("M14 4h6v6"),
+      stroke("M20 4L9 15"),
+      stroke("M10 4H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-4"),
+    ],
+  };
+}
+
 export const DRAW_TAGS = ["svg", "g", "path", "circle", "rect", "line", "polygon"];
 
 export function walkDraw(node, visit) {
