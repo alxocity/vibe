@@ -1,6 +1,5 @@
 // Pure rule. A build is a set of block ids. No clock, storage, locale, float, or random source.
-
-const BUILD_SIZE = 5;
+// Any count of distinct tray ids is scored, including none. A duplicate or an unknown id is not a build.
 
 const ROOM = {
   one: "One seat passed.",
@@ -71,7 +70,7 @@ export function score(build, rubric, trayIds) {
   rubricArrays(rubric);
   if (!Array.isArray(trayIds)) throw new TypeError("tray");
   const list = asList(build);
-  if (!list || list.length !== BUILD_SIZE) return { status: "not-a-build" };
+  if (!list) return { status: "not-a-build" };
 
   for (let i = 0; i < list.length; i += 1) {
     const id = list[i];

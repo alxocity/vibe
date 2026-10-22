@@ -6,7 +6,7 @@ import { echoId, score } from "./score.js";
 import { bindInput } from "./input.js";
 import { echoHref, linksFor } from "./nav.js";
 import { pageAddress, soloPath } from "./paths.js";
-import { checkLabel, playbackLine } from "./playback.js";
+import { playbackLine } from "./playback.js";
 import { echoGateStatus, liveEchoIds, shareLine, visibleStreak } from "./progress.js";
 import { browserBackend, openSave } from "./save.js";
 import { flattenTray } from "./tray.js";
@@ -68,18 +68,26 @@ if (activeSave && puzzle && !gate) {
   }
 }
 
+const pickedLive = el("p", { class: "picked", role: "status", "aria-live": "polite" });
+pickedLive.textContent = "Picked " + String(picked.length);
+
+const resultLive = el("p", {
+  role: "status",
+  "aria-live": "polite",
+  tabindex: "-1",
+  "data-move": "1",
+  "data-focus-id": "outcome",
+});
+if (outcome) resultLive.textContent = outcome.line;
+
+function liveText(node, text) {
+  if (node.textContent !== text) node.textContent = text;
+}
+
 function mast() {
   return el("header", { class: "mast" }, [
     el("div", { class: "arch", "aria-hidden": "true" }),
     el("h1", {}, [tx("Vibe Chamber")]),
-  ]);
-}
-
-function notices(kind) {
-  return el("section", { class: "notices" }, [
-    el("p", {}, [tx(lines.players)]),
-    el("p", {}, [tx(lines.game)]),
-    el("p", {}, [tx(kind === "daily" ? lines.realDaily : lines.real)]),
   ]);
 }
 
@@ -166,8 +174,7 @@ function rubric(row) {
 function toggle(id) {
   const index = picked.indexOf(id);
   if (index !== -1) picked = picked.slice(0, index).concat(picked.slice(index + 1));
-  else if (picked.length < 5) picked = picked.concat([id]);
-  else return;
+  else picked = picked.concat([id]);
   outcome = null;
   activeSave.setPicked(pageId, picked);
   focusAfter = "block-" + id;
@@ -175,7 +182,7 @@ function toggle(id) {
 }
 
 function onCheck() {
-  if (picked.length !== 5 || !puzzle) return;
+  if (!puzzle) return;
   if (mode === "echo") {
     gate = echoGate(todayEcho());
     if (gate) {
@@ -194,8 +201,13 @@ function onCheck() {
   render();
 }
 
+function pickedCount() {
+  liveText(pickedLive, "Picked " + String(picked.length));
+  return pickedLive;
+}
+
 function trayNodes() {
-  const nodes = [el("p", { class: "picked" }, [tx("Picked " + String(picked.length))])];
+  const nodes = [pickedCount()];
   for (let g = 0; g < tray.groups.length; g += 1) {
     const group = tray.groups[g];
     nodes.push(el("h3", {}, [tx(group.label)]));
@@ -216,16 +228,13 @@ function trayNodes() {
     }
     nodes.push(grid);
   }
-  const ready = picked.length === 5;
   const check = el(
     "button",
     {
       type: "button",
-      class: ready ? "action" : "action is-quiet",
+      class: "action",
       "data-move": "1",
       "data-focus-id": "check",
-      "aria-disabled": ready ? "false" : "true",
-      "aria-label": checkLabel(ready),
     },
     [tx("Check")],
   );
@@ -234,13 +243,13 @@ function trayNodes() {
   return nodes;
 }
 
-function outcomeNode() {
-  if (!outcome) return null;
-  return el(
-    "div",
-    { class: "frame", tabindex: "-1", role: "status", "aria-live": "polite", "data-move": "1", "data-focus-id": "outcome" },
-    [el("p", {}, [tx(outcome.line)])],
-  );
+function outcomeNode(row) {
+  if (!outcome || !row) return null;
+  liveText(resultLive, outcome.line);
+  return el("div", { class: "outcome" }, [
+    el("div", { class: "frame" }, [resultLive]),
+    rubric(row),
+  ]);
 }
 
 function shareNode() {
@@ -253,12 +262,11 @@ function playNodes(row) {
   const nodes = [
     el("h2", {}, [tx(mode === "solo" ? row.title : "Echo " + pageId)]),
     el("p", { class: "situation" }, [tx(row.situation)]),
-    rubric(row),
+    outcomeNode(row),
     sceneNode(scenePlan(picked, flat.ids)),
   ];
   const trayParts = trayNodes();
   for (let i = 0; i < trayParts.length; i += 1) nodes.push(trayParts[i]);
-  nodes.push(outcomeNode());
   if (mode === "solo" && soloSave.doneIds().indexOf(pageId) !== -1) {
     const index = solo.items.findIndex((item) => String(item.id) === pageId);
     const next = solo.items[index + 1];
@@ -270,8 +278,7 @@ function playNodes(row) {
 }
 
 function view() {
-  const kind = mode === "daily" || mode === "echo" ? "daily" : "home";
-  const nodes = [mast(), notices(kind), warningNode()];
+  const nodes = [mast(), warningNode()];
   const today = todayEcho();
   const todayRow = rowById(echoes.items, today);
   const todayOpen = echoGateStatus(todayRow, today, today, withdrawn) == null;
@@ -320,7 +327,6 @@ function view() {
     for (let i = 0; i < parts.length; i += 1) if (parts[i]) nodes.push(parts[i]);
     nodes.push(copyLink());
     nodes.push(clearButton());
-    if (mode === "solo") nodes.push(el("p", { class: "aside" }, [tx(lines.soloAside)]));
   }
 
   return nodes.filter((node) => node != null);

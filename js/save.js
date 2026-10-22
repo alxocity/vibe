@@ -17,7 +17,7 @@ function has(list, id) {
 }
 
 function isBlockList(value, trayIds) {
-  if (!Array.isArray(value) || value.length > 5) return false;
+  if (!Array.isArray(value)) return false;
   for (let i = 0; i < value.length; i += 1) {
     const id = value[i];
     if (typeof id !== "string" || !has(trayIds, id)) return false;

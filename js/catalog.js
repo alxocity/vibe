@@ -299,11 +299,6 @@ export const echoes = {
   "items": []
 };
 export const lines = {
-  "players": "Players are 18+.",
-  "game": "This is a game, not therapy, not legal advice.",
-  "real": "Something real is not for this game. Alex arranges that separately and privately, when it fits the rules.",
-  "realDaily": "Something real is not for this game.",
-  "soloAside": "A game with other people is not this page.",
   "notYet": "Not yet.",
   "notToday": "not today",
   "noPuzzle": "No puzzle today.",

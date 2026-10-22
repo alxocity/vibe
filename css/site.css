@@ -56,13 +56,6 @@ h3 { margin: 1rem 0 0.4rem; font-size: 1.05rem; letter-spacing: 0.04em; text-tra
 
 p { margin: 0.4rem 0; }
 
-.notices {
-  border-top: 2px solid var(--ink);
-  border-bottom: 2px solid var(--ink);
-  padding: 0.6rem 0;
-  margin: 1rem 0;
-}
-
 .warning {
   border: 3px solid var(--ink);
   padding: 0.75rem;
@@ -82,6 +75,16 @@ p { margin: 0.4rem 0; }
 .rubric dd { margin: 0; }
 
 .picked { font-variant-numeric: tabular-nums; }
+
+.outcome {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: start;
+  margin: 1rem 0;
+}
+.outcome .frame,
+.outcome .rubric { margin: 0; flex: 1 1 12rem; }
 
 .tray {
   display: grid;
@@ -134,7 +137,6 @@ svg [data-swatch="purple"] { fill: var(--swatch-purple); }
 svg [data-swatch="gold"] { fill: var(--swatch-gold); }
 
 .action, .link { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 0.75rem; }
-.action.is-quiet { background: transparent; border-style: dashed; }
 .action-quiet { background: transparent; }
 
 .frame { margin: 1rem 0; padding: 1rem; }
@@ -159,8 +161,6 @@ svg [data-swatch="gold"] { fill: var(--swatch-gold); }
   font-size: 1rem;
 }
 .hint { font-size: 1rem; margin-top: 0.35rem; }
-
-.aside { margin-top: 1.25rem; }
 
 a:focus,
 button:focus,
