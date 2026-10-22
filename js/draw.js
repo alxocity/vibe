@@ -247,6 +247,13 @@ function roomShapes() {
   ];
 }
 
+const BACKDROPS = { room: roomShapes };
+
+export function backdropShapes(name) {
+  if (!Object.hasOwn(BACKDROPS, name)) return roomShapes();
+  return BACKDROPS[name]();
+}
+
 export function glyphTree(id) {
   return {
     tag: "svg",
@@ -295,7 +302,7 @@ function ambientTorch() {
 
 export function sceneTree(plan) {
   const layers = [
-    { tag: "g", attrs: { "data-layer": "room" }, kids: roomShapes() },
+    { tag: "g", attrs: { "data-layer": "room" }, kids: backdropShapes(plan.backdrop) },
     ambientTorch(),
     { tag: "g", attrs: { "data-layer": "sky" }, kids: skyShapes(plan.sky) },
     ambientDust(),

@@ -169,6 +169,10 @@ svg [data-swatch="gold"] { fill: var(--swatch-gold); }
 }
 .hint { font-size: 1rem; margin-top: 0.35rem; }
 
+a,
+button {
+  touch-action: manipulation;
+}
 a:focus,
 button:focus,
 input:focus,
@@ -304,6 +308,10 @@ body:has(#result-panel:not([hidden]):not(.is-open)) .chamber.is-play h2 { max-wi
 }
 .situation[hidden] { display: none; }
 .chamber.is-play .situation { cursor: pointer; }
+.chamber.is-play { overscroll-behavior: none; }
+.dock,
+.chamber.is-play .situation,
+.result-detail { overscroll-behavior: contain; }
 #result-root {
   position: fixed;
   inset: 0;
@@ -872,7 +880,7 @@ body:has(#result-panel:not([hidden]):not(.is-open)) .chamber.is-play h2 { max-wi
   width: 100%;
   min-height: 2.75rem;
   padding: 0.35rem 0.45rem;
-  font-size: 0.8rem;
+  font-size: 1rem;
   background: var(--paper);
   color: var(--ink);
   border: 2px solid var(--ink);
@@ -1035,7 +1043,9 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
 
 @media (min-height: 520px) {
   .chamber.is-play {
+    height: 100vh;
     height: 100dvh;
+    max-height: 100vh;
     max-height: 100dvh;
     min-height: 0;
     overflow: hidden;
@@ -1046,7 +1056,9 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
 
 @media (orientation: landscape) and (min-width: 560px) {
   .chamber.is-play:has(.play.is-open) {
+    height: 100vh;
     height: 100dvh;
+    max-height: 100vh;
     max-height: 100dvh;
     min-height: 0;
     overflow: hidden;
@@ -1056,6 +1068,7 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
     flex-direction: row;
     align-items: stretch;
     min-height: 0;
+    height: calc(100vh - 3.2rem);
     height: calc(100dvh - 3.2rem);
     max-height: 100%;
   }

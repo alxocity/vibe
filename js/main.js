@@ -407,6 +407,7 @@ function rubric(row) {
 
 function currentPlan() {
   const plan = scenePlan(picked, flat.ids);
+  if (puzzle && typeof puzzle.backdrop === "string" && puzzle.backdrop) plan.backdrop = puzzle.backdrop;
   const missed = marks ? marks.missed : [];
   const ghosts = ghostIds(missed, showGhosts);
   if (ghosts.length > 0) plan.ghosts = ghosts;
