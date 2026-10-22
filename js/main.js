@@ -68,6 +68,8 @@ let focusAfter = null;
 let activeTab = tray.groups.length ? tray.groups[0].id : "";
 let trayOpen = false;
 let promptOpen = true;
+let menuOpen = false;
+let resetArmed = false;
 let shakeOnce = false;
 let recent = [];
 let marks = null;
@@ -103,6 +105,7 @@ resultPanel.hidden = true;
 resultPanel.append(resultHold);
 const resultRoot = el("div", { id: "result-root" });
 resultRoot.append(resultPanel);
+resultRoot.append(shareLive);
 document.body.append(resultRoot);
 
 function seedRecent() {
@@ -246,14 +249,12 @@ function noteCopied() {
 }
 
 function failCopy() {
-  if (!trayOpen) {
-    liveText(shareLive, "Couldn't copy. Select the address.");
-    return;
-  }
+  liveText(shareLive, "Couldn't copy. Select the address.");
+  if (!menuOpen) return;
   copyFailed = true;
+  resetArmed = false;
   focusAfter = "copy-link";
   render();
-  liveText(shareLive, "Couldn't copy. Select the address.");
 }
 
 function writeSelection(url) {
@@ -278,6 +279,7 @@ function writeSelection(url) {
 function copyUrl(url) {
   if (writeSelection(url)) {
     noteCopied();
+    if (menuOpen) closeMenu("play-menu");
     return;
   }
   failCopy();
@@ -301,7 +303,9 @@ function sharePage(url) {
     copyUrl(url);
     return;
   }
-  pending.then(() => {}, (error) => {
+  pending.then(() => {
+    if (menuOpen) closeMenu("play-menu");
+  }, (error) => {
     if (error && error.name === "AbortError") return;
     failCopy();
   });
@@ -325,14 +329,37 @@ function shareButton() {
       "aria-label": name,
       title: name,
     },
-    [paint(shareGlyph())],
+    [paint(shareGlyph()), el("span", {}, [tx(name)])],
   );
-  button.addEventListener("click", () => sharePage(url));
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    sharePage(url);
+  });
   return button;
 }
 
-function shareControl() {
-  return el("div", { class: "share-wrap" }, [shareButton(), shareLive]);
+function wipeProgress() {
+  settleFlights();
+  activeSave.clearAll();
+  picked = [];
+  recent = [];
+  outcome = null;
+  resultOpen = false;
+  keyOpen = false;
+  marks = null;
+  promptOpen = true;
+  menuOpen = false;
+  resetArmed = false;
+  copyFailed = false;
+}
+
+function closeMenu(focus) {
+  menuOpen = false;
+  resetArmed = false;
+  copyFailed = false;
+  if (shareLive.textContent === "Couldn't copy. Select the address.") liveText(shareLive, "");
+  focusAfter = focus || "play-menu";
+  render();
 }
 
 function clearButton() {
@@ -342,19 +369,79 @@ function clearButton() {
     [tx(lines.clear)],
   );
   button.addEventListener("click", () => {
-    settleFlights();
-    activeSave.clearAll();
-    picked = [];
-    recent = [];
-    outcome = null;
-    resultOpen = false;
-    keyOpen = false;
-    marks = null;
-    promptOpen = true;
+    wipeProgress();
     focusAfter = "clear";
     render();
   });
   return button;
+}
+
+function menuButton() {
+  const button = el(
+    "button",
+    {
+      type: "button",
+      class: "menu-toggle",
+      "data-move": "1",
+      "data-focus-id": "play-menu",
+      "aria-expanded": menuOpen ? "true" : "false",
+      "aria-controls": "play-menu",
+      "aria-label": "Menu",
+    },
+    [el("span", { class: "menu-icon", "aria-hidden": "true" })],
+  );
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (menuOpen) closeMenu("play-menu");
+    else {
+      menuOpen = true;
+      focusAfter = "play-menu";
+      render();
+    }
+  });
+  return button;
+}
+
+function resetControl() {
+  if (!resetArmed) {
+    const arm = el(
+      "button",
+      { type: "button", class: "menu-item", "data-move": "1", "data-focus-id": "reset" },
+      [tx("Reset progress")],
+    );
+    arm.addEventListener("click", (event) => {
+      event.stopPropagation();
+      resetArmed = true;
+      menuOpen = true;
+      focusAfter = "clear";
+      render();
+    });
+    return arm;
+  }
+  const confirm = el(
+    "button",
+    { type: "button", class: "menu-item", "data-move": "1", "data-focus-id": "clear" },
+    [tx(lines.clear)],
+  );
+  confirm.addEventListener("click", (event) => {
+    event.stopPropagation();
+    wipeProgress();
+    focusAfter = "play-menu";
+    render();
+  });
+  return confirm;
+}
+
+function menuPanel() {
+  const wrap = el("div", { class: "share-wrap" }, [shareButton()]);
+  if (menuOpen) wrap.append(shareLive);
+  const kids = [wrap, resetControl()];
+  if (menuOpen && copyFailed) {
+    kids.push(field("copy-link", "Copy link", pageAddress(window.location), "Select the address and copy it."));
+  }
+  const panel = el("div", { id: "play-menu", class: "play-menu", role: "group", "aria-label": "Menu" }, kids);
+  if (!menuOpen) panel.hidden = true;
+  return panel;
 }
 
 function streakNode(today) {
@@ -619,10 +706,6 @@ function categoryGrids() {
 
 function setTray(open, focusId) {
   if (open && !sideBySide()) promptOpen = false;
-  if (!open) {
-    copyFailed = false;
-    if (shareLive.textContent === "Couldn't copy. Select the address.") liveText(shareLive, "");
-  }
   trayOpen = open;
   focusAfter = focusId;
   render();
@@ -679,7 +762,6 @@ function inventoryNode(extras) {
     else extraKids.push(node);
   }
   if (extraKids.length > 0) kids.push(el("div", { class: "dock-extra" }, extraKids));
-  if (copyFailed) actionKids.push(field("copy-link", "Copy link", pageAddress(window.location), "Select the address and copy it."));
   if (actionKids.length > 0) kids.push(el("div", { class: "bag-actions" }, actionKids));
   const dockAttrs = {
     class: "dock",
@@ -831,9 +913,13 @@ function playShell(row, extras) {
     el("div", { class: "stage" }, [
       sceneNode(currentPlan()),
       el("div", { class: "hud" }, [
-        el("h2", {}, [tx(mode === "solo" ? row.title : "Echo " + pageId)]),
+        el("div", { class: "hud-bar" }, [
+          el("h2", {}, [tx(mode === "solo" ? row.title : "Echo " + pageId)]),
+        ]),
         el("div", { class: promptOpen ? "dialogue is-open" : "dialogue" }, [promptButton, situation]),
       ]),
+      menuButton(),
+      menuPanel(),
       el("div", { class: "hud-actions" }, [bagButton(), checkButton()]),
     ]),
     inventoryNode(menuExtras),
@@ -894,8 +980,6 @@ function view() {
     }
     extras.push(shareNode());
     if (mode === "echo") extras.push(streakNode(todayEcho()));
-    extras.push(shareControl());
-    extras.push(clearButton());
     nodes.push(playShell(puzzle, extras));
   }
 
@@ -903,6 +987,7 @@ function view() {
 }
 
 function render() {
+  if (!menuOpen) resultRoot.append(shareLive);
   const keep = focusAfter || (document.activeElement && document.activeElement.getAttribute("data-focus-id"));
   focusAfter = null;
   const nodes = view();
@@ -958,6 +1043,11 @@ document.addEventListener("keydown", (event) => {
     setTray(false, "tray-toggle");
     return;
   }
+  if (event.key === "Escape" && menuOpen) {
+    event.preventDefault();
+    closeMenu("play-menu");
+    return;
+  }
   if (event.key === "Escape" && resultOpen) {
     event.preventDefault();
     dismissResult();
@@ -985,8 +1075,15 @@ window.matchMedia("(orientation: landscape) and (min-width: 560px)").addEventLis
 
 let swipeStart = null;
 document.addEventListener("click", (event) => {
-  if (!resultOpen || !outcome) return;
   const target = event.target;
+  if (menuOpen && target && target.closest) {
+    const inMenu = target.closest("#play-menu") || target.closest('[data-focus-id="play-menu"]');
+    if (!inMenu) {
+      closeMenu("play-menu");
+      return;
+    }
+  }
+  if (!resultOpen || !outcome) return;
   if (!target || !target.closest) return;
   if (target.closest(".result-card")) return;
   if (target.closest(".result-badge")) return;

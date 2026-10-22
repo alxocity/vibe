@@ -282,6 +282,105 @@ input:focus,
 .result-key,
 .prompt-toggle,
 .situation { pointer-events: auto; }
+.hud-bar {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  min-width: 0;
+  padding-left: 3.15rem;
+}
+.menu-toggle {
+  position: absolute;
+  z-index: 5;
+  top: 0.4rem;
+  left: 0.45rem;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  pointer-events: auto;
+}
+.menu-icon {
+  display: block;
+  width: 1rem;
+  height: 2px;
+  background: currentColor;
+  box-shadow: 0 -0.35rem 0 currentColor, 0 0.35rem 0 currentColor;
+}
+.play-menu {
+  position: absolute;
+  z-index: 6;
+  top: 3.5rem;
+  left: 0.45rem;
+  width: min(18rem, calc(100% - 0.9rem));
+  max-height: calc(100% - 3.5rem - 5.2rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.45rem;
+  overflow: auto;
+  background: var(--card);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+  pointer-events: auto;
+}
+.play-menu[hidden] { display: none !important; }
+.menu-item,
+.play-menu .share {
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.45rem;
+  font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: left;
+  white-space: normal;
+  background: var(--card);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.play-menu .share svg { flex: 0 0 auto; }
+.play-menu .share-wrap {
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  max-width: 100%;
+}
+.play-menu .copy {
+  margin: 0;
+  padding: 0.35rem 0.45rem 0.4rem;
+  background: var(--card);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.play-menu .copy span { font-size: 0.72rem; margin-bottom: 0.15rem; }
+.play-menu .copy input {
+  min-height: 2.75rem;
+  padding: 0.35rem 0.45rem;
+  font-size: 1rem;
+}
+.play-menu .hint { margin: 0.15rem 0 0; font-size: 0.68rem; }
 body:has(#result-panel:not([hidden]):not(.is-open)) .chamber.is-play h2 { max-width: calc(100% - 5.5rem); }
 .dialogue { display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; }
 .prompt-toggle {
@@ -697,6 +796,8 @@ body:has(#result-panel:not([hidden]):not(.is-open)) .chamber.is-play h2 { max-wi
   border-bottom: 4px solid var(--card);
 }
 @media (max-height: 420px) {
+  .hud-bar { min-height: 0; }
+  .menu-toggle { top: 0; }
   .dock { max-height: 100%; }
   .result-card { padding: 0; }
   .result-slot.is-open:not(.is-key) { border-top-width: 0; border-bottom-width: 0; }
@@ -818,7 +919,8 @@ body:has(#result-panel:not([hidden]):not(.is-open)) .chamber.is-play h2 { max-wi
   line-height: 1.15;
   overflow-wrap: anywhere;
 }
-.share-status:empty {
+.share-status:empty,
+#result-root > .share-status {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -902,6 +1004,8 @@ body:has(#result-panel:not([hidden]):not(.is-open)) .chamber.is-play h2 { max-wi
 .chamber.is-play .tab,
 .chamber.is-play .bag,
 .chamber.is-play .share,
+.chamber.is-play .menu-toggle,
+.chamber.is-play .menu-item,
 #result-panel .result-badge,
 #result-panel .result-close,
 #result-panel .result-key,
@@ -914,6 +1018,8 @@ body:has(#result-panel:not([hidden]):not(.is-open)) .chamber.is-play h2 { max-wi
 .chamber.is-play .tab:active,
 .chamber.is-play .bag:active,
 .chamber.is-play .share:active,
+.chamber.is-play .menu-toggle:active,
+.chamber.is-play .menu-item:active,
 #result-panel .result-badge:active,
 #result-panel .result-close:active,
 #result-panel .result-key:active,
@@ -1136,7 +1242,11 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
   .bag,
   .share,
   .share-status,
+  .menu-toggle,
+  .play-menu,
+  .menu-item,
   .bag-actions .copy,
+  .play-menu .copy,
   .dock,
   .chamber.is-play h2,
   .chamber.is-play > .link {
@@ -1153,6 +1263,10 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
     background: Highlight;
     color: HighlightText;
     border-color: CanvasText;
+  }
+  .menu-icon {
+    background: CanvasText;
+    box-shadow: 0 -0.35rem 0 CanvasText, 0 0.35rem 0 CanvasText;
   }
   .inventory-backdrop { background: Canvas; }
   .dock-grip { background: CanvasText; }

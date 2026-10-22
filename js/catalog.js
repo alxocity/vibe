@@ -296,7 +296,65 @@ export const solo = {
 };
 export const echoes = {
   "withdrawn": [],
-  "items": []
+  "items": [
+    {
+      "id": 0,
+      "situation": "Pack the pineapple and the lamp before dark. Bring a shield or a castle. Leave the sword aside.",
+      "required": [
+        "pineapple",
+        "lamp"
+      ],
+      "anyOf": [
+        "shield",
+        "castle"
+      ],
+      "forbidden": [
+        "sword"
+      ],
+      "works": "The pineapple and the lamp are packed.",
+      "fairness": {
+        "name": "Alex",
+        "date": "2026-10-22"
+      }
+    },
+    {
+      "id": 1,
+      "situation": "Keep the oven hot. The fridge stays shut.",
+      "required": [
+        "oven",
+        "hot"
+      ],
+      "anyOf": [],
+      "forbidden": [
+        "fridge"
+      ],
+      "works": "The oven is hot.",
+      "fairness": {
+        "name": "Alex",
+        "date": "2026-10-22"
+      }
+    },
+    {
+      "id": 2,
+      "situation": "Set the spoon in the fridge, with pizza or a slice. Leave the dragon aside.",
+      "required": [
+        "fridge",
+        "spoon"
+      ],
+      "anyOf": [
+        "pizza",
+        "slice"
+      ],
+      "forbidden": [
+        "dragon"
+      ],
+      "works": "The fridge holds the spoon.",
+      "fairness": {
+        "name": "Alex",
+        "date": "2026-10-22"
+      }
+    }
+  ]
 };
 export const lines = {
   "notYet": "Not yet.",
