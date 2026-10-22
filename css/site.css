@@ -343,7 +343,7 @@ input:focus,
   justify-content: center;
   gap: 0.05rem;
 }
-.bag-wrap .picked { margin: 0; font-size: 0.72rem; font-weight: 700; text-align: center; }
+.bag-wrap .picked { margin: 0.35rem 0 0; font-size: 0.72rem; font-weight: 700; line-height: 1.15; text-align: center; }
 .bag {
   display: flex;
   flex-direction: column;
@@ -485,6 +485,15 @@ input:focus,
   background: var(--ink);
   color: var(--card);
   border-bottom: 4px solid var(--card);
+}
+@media (max-width: 240px) {
+  .tablist { gap: 0.15rem; padding: 0.05rem 0.25rem; }
+  .tab {
+    flex-basis: 0;
+    min-height: 1.15rem;
+    padding: 0 0.1rem;
+    line-height: 1;
+  }
 }
 .dock .tray {
   overflow: visible;
