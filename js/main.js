@@ -61,6 +61,7 @@ const activeSave = mode === "solo" ? soloSave : dailySave;
 
 let picked = [];
 let outcome = null;
+let resultOpen = false;
 let gate = mode === "echo" ? echoGate(todayEcho()) : null;
 let focusAfter = null;
 let activeTab = tray.groups.length ? tray.groups[0].id : "";
@@ -94,6 +95,8 @@ const resultLive = el("p", {
   "data-focus-id": "outcome",
 });
 if (outcome) resultLive.textContent = outcome.line;
+const resultHold = el("div", { class: "result-live" });
+resultHold.append(resultLive);
 
 function seedRecent() {
   const next = [];
@@ -337,6 +340,7 @@ function clearButton() {
     picked = [];
     recent = [];
     outcome = null;
+    resultOpen = false;
     marks = null;
     promptOpen = true;
     focusAfter = "clear";
@@ -410,6 +414,7 @@ function toggle(id, fromRecent) {
   recent = remember(recent, id, RECENT_LIMIT);
   if (firstPick) promptOpen = false;
   outcome = null;
+  resultOpen = false;
   marks = null;
   activeSave.setPicked(pageId, picked);
   focusAfter = (fromRecent ? "recent-" : "block-") + id;
@@ -434,6 +439,7 @@ function onCheck() {
     gate = echoGate(todayEcho());
     if (gate) {
       outcome = null;
+      resultOpen = false;
       marks = null;
       focusAfter = "copy-link";
       render();
@@ -444,11 +450,56 @@ function onCheck() {
   const line = playbackLine(result.status, puzzle.works, lines.notYet);
   if (!line) return;
   outcome = { status: result.status, line };
+  resultOpen = true;
   marks = checkMarks(picked, puzzle);
   if (result.status === "pass") activeSave.markDone(pageId);
   shakeOnce = result.status !== "pass";
   focusAfter = "outcome";
   render();
+}
+
+function resultTally(row) {
+  const required = row && Array.isArray(row.required) ? row.required : [];
+  const anyOf = row && Array.isArray(row.anyOf) ? row.anyOf : [];
+  const need = required.length + (anyOf.length > 0 ? 1 : 0);
+  const correct = marks && marks.correct ? marks.correct : [];
+  let got = 0;
+  for (let i = 0; i < required.length; i += 1) {
+    if (correct.indexOf(required[i]) !== -1) got += 1;
+  }
+  if (anyOf.length > 0) {
+    for (let i = 0; i < anyOf.length; i += 1) {
+      if (correct.indexOf(anyOf[i]) !== -1) {
+        got += 1;
+        break;
+      }
+    }
+  }
+  if (outcome && outcome.status === "pass") got = need;
+  return String(got) + "/" + String(need);
+}
+
+function focusResult(id) {
+  window.setTimeout(() => {
+    const node = document.querySelector('[data-focus-id="' + id + '"]');
+    if (node) node.focus();
+  }, 0);
+}
+
+function dismissResult() {
+  if (!outcome || !resultOpen) return;
+  resultOpen = false;
+  focusAfter = "result-badge";
+  render();
+  focusResult("result-badge");
+}
+
+function showResult() {
+  if (!outcome) return;
+  resultOpen = true;
+  focusAfter = "result-close";
+  render();
+  focusResult("result-close");
 }
 
 function pickedCount() {
@@ -619,17 +670,63 @@ function inventoryNode(extras) {
   return inventory;
 }
 
-function resultCard(row, nextLink) {
+function resultBadge(pass, score) {
+  const button = el(
+    "button",
+    {
+      type: "button",
+      class: pass ? "result-badge is-pass" : "result-badge is-miss",
+      "data-move": "1",
+      "data-focus-id": "result-badge",
+      "aria-expanded": resultOpen ? "true" : "false",
+      "aria-controls": "result-panel",
+      "aria-label": (pass ? "Clear " : "Miss ") + score + ". Show result",
+    },
+    [
+      el("span", { class: "result-mark", "aria-hidden": "true" }, [tx(pass ? "Clear" : "Miss")]),
+      el("span", { class: "result-score" }, [tx(score)]),
+    ],
+  );
+  button.addEventListener("click", () => showResult());
+  return button;
+}
+
+function resultCluster(row, nextLink) {
   if (!outcome || !row) return null;
   liveText(resultLive, outcome.line);
   const pass = outcome.status === "pass";
-  const kids = [
-    el("p", { class: "result-kicker" }, [tx(pass ? "Stage clear" : "Try again")]),
-    resultLive,
-    rubric(row),
-  ];
-  if (nextLink) kids.push(nextLink);
-  return el("div", { class: pass ? "result-card is-pass" : "result-card is-miss" }, kids);
+  const score = resultTally(row);
+  const slot = el("div", {
+    id: "result-panel",
+    class: resultOpen ? "result-slot is-open result-card " + (pass ? "is-pass" : "is-miss") : "result-slot",
+  });
+  if (!resultOpen) {
+    slot.append(resultBadge(pass, score), resultHold);
+    return slot;
+  }
+  const close = el(
+    "button",
+    {
+      type: "button",
+      class: "result-close",
+      "data-move": "1",
+      "data-focus-id": "result-close",
+      "aria-label": "Close result",
+    },
+    [tx("Close")],
+  );
+  close.addEventListener("click", () => dismissResult());
+  const detail = el("div", { class: "result-detail" }, [rubric(row)]);
+  if (nextLink) detail.append(nextLink);
+  slot.append(
+    el("div", { class: "result-head" }, [
+      el("p", { class: "result-kicker" }, [tx(pass ? "Stage clear" : "Try again")]),
+      close,
+    ]),
+    resultHold,
+    detail,
+  );
+  return slot;
 }
 
 function shareNode() {
@@ -680,8 +777,8 @@ function playShell(row, extras) {
       el("div", { class: "hud" }, [
         el("h2", {}, [tx(mode === "solo" ? row.title : "Echo " + pageId)]),
         el("div", { class: promptOpen ? "dialogue is-open" : "dialogue" }, [promptButton, situation]),
-        resultCard(row, nextLink),
       ]),
+      resultCluster(row, nextLink),
       el("div", { class: "hud-actions" }, [bagButton(), checkButton()]),
     ]),
     inventoryNode(menuExtras),
@@ -758,7 +855,7 @@ function render() {
   for (let i = 0; i < nodes.length; i += 1) app.append(nodes[i]);
   const playing = Boolean(puzzle) && !gate && (mode === "solo" || mode === "echo");
   app.classList.toggle("is-play", playing);
-  const outside = app.querySelectorAll(".mast, .hud, .scene");
+  const outside = app.querySelectorAll(".mast, .hud, .scene, .result-slot");
   const modal = playing && bagModal();
   for (let i = 0; i < outside.length; i += 1) outside[i].inert = modal;
   if (shakeOnce) {
@@ -805,6 +902,11 @@ document.addEventListener("keydown", (event) => {
     setTray(false, "tray-toggle");
     return;
   }
+  if (event.key === "Escape" && resultOpen) {
+    event.preventDefault();
+    dismissResult();
+    return;
+  }
   if (event.key !== "Tab" || !bagModal()) return;
   const dialog = document.querySelector(".dock");
   if (!dialog) return;
@@ -826,6 +928,16 @@ window.matchMedia("(orientation: landscape) and (min-width: 560px)").addEventLis
 });
 
 let swipeStart = null;
+document.addEventListener("click", (event) => {
+  if (!resultOpen || !outcome) return;
+  const target = event.target;
+  if (!target || !target.closest) return;
+  if (target.closest(".result-card")) return;
+  if (target.closest(".result-badge")) return;
+  if (target.closest("button, a, input, textarea, select, label")) return;
+  if (target.closest(".scene")) dismissResult();
+});
+
 document.addEventListener("pointerdown", (event) => {
   const handle = event.target && event.target.closest && event.target.closest(".dock-handle");
   if (!handle || !trayOpen) {

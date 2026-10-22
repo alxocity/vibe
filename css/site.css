@@ -273,8 +273,11 @@ input:focus,
 .hud h2,
 .dialogue,
 .result-card,
+.result-badge,
+.result-close,
 .prompt-toggle,
 .situation { pointer-events: auto; }
+.stage:has(.result-badge) h2 { max-width: calc(100% - 5.5rem); }
 .dialogue { display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; }
 .prompt-toggle {
   width: auto;
@@ -300,16 +303,91 @@ input:focus,
 }
 .situation[hidden] { display: none; }
 .chamber.is-play .situation { cursor: pointer; }
+.result-slot {
+  position: absolute;
+  z-index: 2;
+  top: 0.35rem;
+  right: 0.45rem;
+  width: max-content;
+  max-width: calc(100% - 0.9rem);
+  pointer-events: none;
+}
+.result-slot.is-open {
+  top: auto;
+  bottom: 5.6rem;
+  width: min(18rem, calc(100% - 0.9rem));
+}
 .result-card {
-  max-height: 38vh;
+  max-height: calc(50vh - 7.5rem);
   overflow: auto;
   padding: 0.55rem 0.65rem;
   background: var(--card);
   border: 4px solid var(--ink);
   box-shadow: 6px 6px 0 var(--ink);
+  pointer-events: auto;
 }
 .result-card.is-pass { border-color: var(--swatch-gold); box-shadow: 6px 6px 0 var(--swatch-gold); }
 .result-card.is-miss { border-color: var(--swatch-red); box-shadow: 6px 6px 0 var(--swatch-red); }
+.result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+.result-close {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--card);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.result-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0.2rem 0.55rem;
+  font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.1;
+  background: var(--card);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  pointer-events: auto;
+}
+.result-badge.is-pass { border-color: var(--swatch-gold); box-shadow: 3px 3px 0 var(--swatch-gold); }
+.result-badge.is-miss { border-color: var(--swatch-red); box-shadow: 3px 3px 0 var(--swatch-red); }
+.result-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+.result-slot.is-open .result-live {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+}
 .result-kicker {
   margin: 0;
   font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
@@ -490,6 +568,13 @@ input:focus,
 }
 @media (max-height: 420px) {
   .dock { max-height: 100%; }
+  .result-card { padding: 0.35rem 0.4rem; }
+  .result-close {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+  }
 }
 .dock .tray {
   overflow: visible;
@@ -624,6 +709,8 @@ input:focus,
 .chamber.is-play .tab,
 .chamber.is-play .bag,
 .chamber.is-play .share,
+.chamber.is-play .result-badge,
+.chamber.is-play .result-close,
 .chamber.is-play .prompt-toggle,
 .chamber.is-play .hud-actions .action,
 .chamber.is-play > .link {
@@ -633,6 +720,8 @@ input:focus,
 .chamber.is-play .tab:active,
 .chamber.is-play .bag:active,
 .chamber.is-play .share:active,
+.chamber.is-play .result-badge:active,
+.chamber.is-play .result-close:active,
 .chamber.is-play .prompt-toggle:active,
 .chamber.is-play .hud-actions .action:active,
 .chamber.is-play > .link:active {
@@ -839,6 +928,8 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
   }
   .scene [data-ghost] { opacity: 1; }
   .result-card,
+  .result-badge,
+  .result-close,
   .situation,
   .prompt-toggle,
   .bag,
@@ -853,6 +944,10 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
     border-color: CanvasText;
     box-shadow: none;
   }
+  .result-card.is-pass,
+  .result-badge.is-pass { outline: 3px solid Highlight; }
+  .result-card.is-miss,
+  .result-badge.is-miss { outline: 3px dashed Highlight; }
   .hud-actions .action {
     background: Highlight;
     color: HighlightText;
