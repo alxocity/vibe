@@ -255,23 +255,65 @@ export function glyphTree(id) {
   };
 }
 
+function placed(id, attrs) {
+  const place = PLACE[id];
+  if (!place || !GLYPHS[id]) return null;
+  const next = {
+    transform: "translate(" + String(place[0]) + " " + String(place[1]) + ") scale(" + SCALE + ")",
+  };
+  const keys = Object.keys(attrs);
+  for (let i = 0; i < keys.length; i += 1) next[keys[i]] = attrs[keys[i]];
+  return {
+    tag: "g",
+    attrs: next,
+    kids: [{ tag: "g", attrs: { "data-pose": id }, kids: GLYPHS[id] }],
+  };
+}
+
+function ambientDust() {
+  return {
+    tag: "g",
+    attrs: { "data-ambient": "dust" },
+    kids: [
+      { tag: "circle", attrs: { cx: "36", cy: "24", r: "1.1", fill: "currentColor" } },
+      { tag: "circle", attrs: { cx: "88", cy: "16", r: "0.8", fill: "currentColor" } },
+      { tag: "circle", attrs: { cx: "146", cy: "28", r: "1.2", fill: "currentColor" } },
+    ],
+  };
+}
+
+function ambientTorch() {
+  return {
+    tag: "g",
+    attrs: { "data-ambient": "torch", transform: "translate(4 28) scale(0.45)" },
+    kids: [
+      stroke("M16 28 C11 22 12 16 16 8 C20 16 21 22 16 28 Z"),
+      stroke("M16 24 C14 20 18 18 16 14"),
+    ],
+  };
+}
+
 export function sceneTree(plan) {
   const layers = [
     { tag: "g", attrs: { "data-layer": "room" }, kids: roomShapes() },
+    ambientTorch(),
     { tag: "g", attrs: { "data-layer": "sky" }, kids: skyShapes(plan.sky) },
+    ambientDust(),
   ];
+  const seen = Object.create(null);
   for (let i = 0; i < plan.order.length; i += 1) {
     const id = plan.order[i];
-    const place = PLACE[id];
-    if (!place || !GLYPHS[id]) continue;
-    layers.push({
-      tag: "g",
-      attrs: {
-        "data-layer": id,
-        transform: "translate(" + String(place[0]) + " " + String(place[1]) + ") scale(" + SCALE + ")",
-      },
-      kids: GLYPHS[id],
-    });
+    const layer = placed(id, { "data-layer": id });
+    if (!layer) continue;
+    seen[id] = true;
+    layers.push(layer);
+  }
+  const ghosts = plan.ghosts || [];
+  for (let i = 0; i < ghosts.length; i += 1) {
+    const id = ghosts[i];
+    if (seen[id]) continue;
+    const layer = placed(id, { "data-ghost": id });
+    if (layer) layers.push(layer);
   }
   return {
     tag: "svg",

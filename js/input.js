@@ -1,7 +1,7 @@
 import { columnIndex, gridIndex, sameColumn } from "./paths.js";
 
 function movers() {
-  return Array.from(document.querySelectorAll("[data-move]"));
+  return Array.from(document.querySelectorAll("[data-move]")).filter((node) => !node.closest("[hidden]"));
 }
 
 function columnCount(grid) {
@@ -47,7 +47,14 @@ function focusMove(direction) {
       }
       const grids = Array.from(document.querySelectorAll(".tray"));
       const slot = grids.indexOf(grid);
-      const neighbor = grids[direction === "down" ? slot + 1 : slot - 1];
+      const step = direction === "down" ? 1 : -1;
+      let neighbor = null;
+      for (let i = slot + step; i >= 0 && i < grids.length; i += step) {
+        if (!grids[i].hidden) {
+          neighbor = grids[i];
+          break;
+        }
+      }
       if (neighbor) {
         const other = tilesOf(neighbor);
         const at = sameColumn(other.length, columnCount(neighbor), columnIndex(index, cols), direction === "down" ? "start" : "end");
@@ -68,6 +75,29 @@ function focusMove(direction) {
   else if (index < 0 && list.length > 0) list[delta > 0 ? 0 : list.length - 1].focus();
 }
 
+function moveTab(direction) {
+  const current = document.activeElement;
+  if (!current || !current.getAttribute || current.getAttribute("role") !== "tab") return false;
+  const tabs = Array.from(document.querySelectorAll("[role='tab']"));
+  const index = tabs.indexOf(current);
+  if (index < 0 || tabs.length === 0) return false;
+  if (direction === "home") {
+    tabs[0].click();
+    return true;
+  }
+  if (direction === "end") {
+    tabs[tabs.length - 1].click();
+    return true;
+  }
+  if (direction !== "left" && direction !== "right") return false;
+  const step = direction === "right" ? 1 : -1;
+  let next = index + step;
+  if (next < 0) next = tabs.length - 1;
+  if (next >= tabs.length) next = 0;
+  tabs[next].click();
+  return true;
+}
+
 function onKey(event) {
   const key = event.key;
   let direction = null;
@@ -75,7 +105,13 @@ function onKey(event) {
   else if (key === "ArrowUp") direction = "up";
   else if (key === "ArrowRight") direction = "right";
   else if (key === "ArrowLeft") direction = "left";
+  else if (key === "Home") direction = "home";
+  else if (key === "End") direction = "end";
   else return;
+  if (direction === "home" || direction === "end") {
+    if (moveTab(direction)) event.preventDefault();
+    return;
+  }
   const el = document.activeElement;
   if (el && el.tagName === "INPUT" && el.readOnly) {
     event.preventDefault();
@@ -83,6 +119,7 @@ function onKey(event) {
     return;
   }
   event.preventDefault();
+  if (moveTab(direction)) return;
   focusMove(direction);
 }
 

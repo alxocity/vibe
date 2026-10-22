@@ -1,7 +1,9 @@
 import { calendar, echoes, lines, playback, solo, tray } from "./catalog.js";
 import { glyphTree, scenePlan, sceneTree } from "./draw.js";
 import { el, tx } from "./dom.js";
+import { ACTION_MS, flightPlan, playFly } from "./motion.js";
 import { paint } from "./paint.js";
+import { RECENT_LIMIT, blocksFor, checkMarks, remember, toggleId } from "./picker.js";
 import { echoId, score } from "./score.js";
 import { bindInput } from "./input.js";
 import { echoHref, linksFor } from "./nav.js";
@@ -60,11 +62,19 @@ let picked = [];
 let outcome = null;
 let gate = mode === "echo" ? echoGate(todayEcho()) : null;
 let focusAfter = null;
+let activeTab = tray.groups.length ? tray.groups[0].id : "";
+let trayOpen = true;
+let recent = [];
+let marks = null;
+const arriving = Object.create(null);
+const flyers = Object.create(null);
+const flyerToken = Object.create(null);
 
 if (activeSave && puzzle && !gate) {
   picked = activeSave.picked(pageId);
   if (activeSave.doneIds().indexOf(pageId) !== -1) {
     outcome = { status: "pass", line: playbackLine("pass", puzzle.works, lines.notYet) };
+    marks = checkMarks(picked, puzzle);
   }
 }
 
@@ -80,8 +90,84 @@ const resultLive = el("p", {
 });
 if (outcome) resultLive.textContent = outcome.line;
 
+function seedRecent() {
+  const next = [];
+  for (let i = picked.length - 1; i >= 0; i -= 1) {
+    next.push(picked[i]);
+    if (next.length >= RECENT_LIMIT) break;
+  }
+  recent = next;
+}
+seedRecent();
+
 function liveText(node, text) {
   if (node.textContent !== text) node.textContent = text;
+}
+
+function prefersReduced() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches === true;
+}
+
+function boxOf(node) {
+  if (!node) return null;
+  const rect = node.getBoundingClientRect();
+  return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+}
+
+function blockNode(id) {
+  return document.querySelector('[data-focus-id="block-' + id + '"]');
+}
+
+function layerNode(id) {
+  return document.querySelector('.scene [data-layer="' + id + '"]');
+}
+
+function poseNode(id) {
+  return document.querySelector('.scene [data-pose="' + id + '"]');
+}
+
+function dropFlyer(id) {
+  const old = flyers[id];
+  if (!old) return;
+  delete flyers[id];
+  old.remove();
+}
+
+function settleFlights() {
+  const ids = Object.keys(flyers);
+  for (let i = 0; i < ids.length; i += 1) {
+    flyerToken[ids[i]] = (flyerToken[ids[i]] || 0) + 1;
+    dropFlyer(ids[i]);
+  }
+  const copies = document.querySelectorAll(".flyer");
+  for (let i = 0; i < copies.length; i += 1) copies[i].remove();
+  const pending = Object.keys(arriving);
+  for (let i = 0; i < pending.length; i += 1) delete arriving[pending[i]];
+  const held = document.querySelectorAll(".scene [data-pose].is-held");
+  for (let i = 0; i < held.length; i += 1) held[i].classList.remove("is-held");
+}
+
+function startFly(id, from, to) {
+  const token = (flyerToken[id] || 0) + 1;
+  flyerToken[id] = token;
+  dropFlyer(id);
+  const flyer = document.createElement("div");
+  flyer.className = "flyer";
+  flyer.setAttribute("aria-hidden", "true");
+  flyer.append(paint(glyphTree(id)));
+  document.body.append(flyer);
+  flyers[id] = flyer;
+  const anim = playFly(flyer, from, to, ACTION_MS);
+  const done = () => {
+    if (flyerToken[id] !== token) return;
+    if (flyers[id] === flyer) delete flyers[id];
+    flyer.remove();
+    delete arriving[id];
+    const pose = poseNode(id);
+    if (pose) pose.classList.remove("is-held");
+  };
+  anim.onfinish = done;
+  anim.oncancel = done;
 }
 
 function mast() {
@@ -130,9 +216,12 @@ function clearButton() {
     [tx(lines.clear)],
   );
   button.addEventListener("click", () => {
+    settleFlights();
     activeSave.clearAll();
     picked = [];
+    recent = [];
     outcome = null;
+    marks = null;
     focusAfter = "clear";
     render();
   });
@@ -154,10 +243,26 @@ function sceneLabel(order) {
 }
 
 function sceneNode(plan) {
-  return el("figure", { class: "scene" }, [
+  const figure = el("figure", { class: "scene" }, [
     paint(sceneTree(plan)),
     el("figcaption", {}, [tx(sceneLabel(plan.order))]),
   ]);
+  if (marks) {
+    for (let i = 0; i < marks.correct.length; i += 1) {
+      const pose = figure.querySelector('[data-pose="' + marks.correct[i] + '"]');
+      if (pose) pose.classList.add("is-correct");
+    }
+    for (let i = 0; i < marks.wrong.length; i += 1) {
+      const pose = figure.querySelector('[data-pose="' + marks.wrong[i] + '"]');
+      if (pose) pose.classList.add("is-wrong");
+    }
+  }
+  const ids = Object.keys(arriving);
+  for (let i = 0; i < ids.length; i += 1) {
+    const pose = figure.querySelector('[data-pose="' + ids[i] + '"]');
+    if (pose) pose.classList.add("is-held");
+  }
+  return figure;
 }
 
 function rubric(row) {
@@ -171,22 +276,44 @@ function rubric(row) {
   ]);
 }
 
-function toggle(id) {
-  const index = picked.indexOf(id);
-  if (index !== -1) picked = picked.slice(0, index).concat(picked.slice(index + 1));
-  else picked = picked.concat([id]);
+function currentPlan() {
+  const plan = scenePlan(picked, flat.ids);
+  if (marks && marks.missed.length > 0) plan.ghosts = marks.missed;
+  return plan;
+}
+
+function toggle(id, fromRecent) {
+  const adding = picked.indexOf(id) === -1;
+  const origin = fromRecent ? document.querySelector('[data-focus-id="recent-' + id + '"]') : blockNode(id);
+  const from = boxOf(adding ? origin : layerNode(id));
+  picked = toggleId(picked, id);
+  recent = remember(recent, id, RECENT_LIMIT);
   outcome = null;
+  marks = null;
   activeSave.setPicked(pageId, picked);
-  focusAfter = "block-" + id;
+  focusAfter = (fromRecent ? "recent-" : "block-") + id;
+  if (adding) arriving[id] = true;
+  else delete arriving[id];
   render();
+  const back = fromRecent ? document.querySelector('[data-focus-id="recent-' + id + '"]') : blockNode(id);
+  const to = boxOf(adding ? layerNode(id) : back);
+  const plan = flightPlan(prefersReduced(), from, to);
+  if (plan.kind === "fly") startFly(id, from, to);
+  else {
+    delete arriving[id];
+    const pose = poseNode(id);
+    if (pose) pose.classList.remove("is-held");
+  }
 }
 
 function onCheck() {
+  settleFlights();
   if (!puzzle) return;
   if (mode === "echo") {
     gate = echoGate(todayEcho());
     if (gate) {
       outcome = null;
+      marks = null;
       focusAfter = "copy-link";
       render();
       return;
@@ -196,6 +323,7 @@ function onCheck() {
   const line = playbackLine(result.status, puzzle.works, lines.notYet);
   if (!line) return;
   outcome = { status: result.status, line };
+  marks = checkMarks(picked, puzzle);
   if (result.status === "pass") activeSave.markDone(pageId);
   focusAfter = "outcome";
   render();
@@ -206,28 +334,21 @@ function pickedCount() {
   return pickedLive;
 }
 
-function trayNodes() {
-  const nodes = [pickedCount()];
-  for (let g = 0; g < tray.groups.length; g += 1) {
-    const group = tray.groups[g];
-    nodes.push(el("h3", {}, [tx(group.label)]));
-    const grid = el("div", { class: "tray", role: "group", "aria-label": group.label });
-    for (let i = 0; i < group.blocks.length; i += 1) {
-      const block = group.blocks[i];
-      const on = picked.indexOf(block.id) !== -1;
-      const button = el("button", {
-        type: "button",
-        class: on ? "tile is-picked" : "tile",
-        "data-move": "1",
-        "data-focus-id": "block-" + block.id,
-        "aria-pressed": on ? "true" : "false",
-      });
-      button.append(paint(glyphTree(block.id)), tx(block.label));
-      button.addEventListener("click", () => toggle(block.id));
-      grid.append(button);
-    }
-    nodes.push(grid);
-  }
+function tileButton(block, focusPrefix) {
+  const on = picked.indexOf(block.id) !== -1;
+  const button = el("button", {
+    type: "button",
+    class: on ? "tile is-picked" : "tile",
+    "data-move": "1",
+    "data-focus-id": focusPrefix + block.id,
+    "aria-pressed": on ? "true" : "false",
+  });
+  button.append(paint(glyphTree(block.id)), tx(block.label));
+  button.addEventListener("click", () => toggle(block.id, focusPrefix === "recent-"));
+  return button;
+}
+
+function checkButton() {
   const check = el(
     "button",
     {
@@ -239,8 +360,93 @@ function trayNodes() {
     [tx("Check")],
   );
   check.addEventListener("click", onCheck);
-  nodes.push(check);
-  return nodes;
+  return check;
+}
+
+function recentRow() {
+  const row = el("div", { class: "recent", role: "group", "aria-label": "Recent" });
+  if (recent.length === 0) {
+    row.append(el("p", { class: "recent-empty" }, [tx("None yet")]));
+    return row;
+  }
+  for (let i = 0; i < recent.length; i += 1) {
+    const id = recent[i];
+    const label = flat.labels[id] || id;
+    row.append(tileButton({ id, label }, "recent-"));
+  }
+  return row;
+}
+
+function tabButton(group) {
+  const on = group.id === activeTab;
+  const button = el(
+    "button",
+    {
+      type: "button",
+      class: on ? "tab is-on" : "tab",
+      role: "tab",
+      id: "tab-" + group.id,
+      "aria-selected": on ? "true" : "false",
+      "aria-controls": "tray-panel",
+      tabindex: on ? "0" : "-1",
+      "data-move": "1",
+      "data-focus-id": "tab-" + group.id,
+    },
+    [tx(group.label)],
+  );
+  button.addEventListener("click", () => {
+    activeTab = group.id;
+    focusAfter = "tab-" + group.id;
+    render();
+  });
+  return button;
+}
+
+function categoryGrids() {
+  const panel = el("div", {
+    class: "dock-grids",
+    role: "tabpanel",
+    id: "tray-panel",
+    "aria-labelledby": "tab-" + activeTab,
+  });
+  for (let g = 0; g < tray.groups.length; g += 1) {
+    const group = tray.groups[g];
+    const grid = el("div", { class: "tray", role: "group", "aria-label": group.label });
+    if (group.id !== activeTab) grid.hidden = true;
+    const blocks = blocksFor(tray.groups, group.id);
+    for (let i = 0; i < blocks.length; i += 1) grid.append(tileButton(blocks[i], "block-"));
+    panel.append(grid);
+  }
+  return panel;
+}
+
+function dockNode() {
+  const toggleTray = el(
+    "button",
+    {
+      type: "button",
+      class: "action action-quiet dock-toggle",
+      "data-move": "1",
+      "data-focus-id": "tray-toggle",
+      "aria-expanded": trayOpen ? "true" : "false",
+      "aria-controls": "dock-body",
+    },
+    [tx(trayOpen ? "Hide tray" : "Show tray")],
+  );
+  toggleTray.addEventListener("click", () => {
+    trayOpen = !trayOpen;
+    focusAfter = "tray-toggle";
+    render();
+  });
+  const tabs = el("div", { class: "tablist", role: "tablist", "aria-label": "Categories" });
+  for (let i = 0; i < tray.groups.length; i += 1) tabs.append(tabButton(tray.groups[i]));
+  const body = el("div", { class: "dock-body", id: "dock-body" }, [recentRow(), tabs, categoryGrids()]);
+  if (!trayOpen) body.hidden = true;
+  const dock = el("section", { class: trayOpen ? "dock" : "dock is-collapsed", "aria-label": "Objects" }, [
+    el("div", { class: "dock-head" }, [pickedCount(), toggleTray]),
+    body,
+  ]);
+  return dock;
 }
 
 function outcomeNode(row) {
@@ -258,23 +464,19 @@ function shareNode() {
   return field("share-card", "Share card", shareLine(pageId, lines), "Select the line and copy it.");
 }
 
-function playNodes(row) {
-  const nodes = [
+function playShell(row, extras) {
+  const stageKids = [
     el("h2", {}, [tx(mode === "solo" ? row.title : "Echo " + pageId)]),
     el("p", { class: "situation" }, [tx(row.situation)]),
     outcomeNode(row),
-    sceneNode(scenePlan(picked, flat.ids)),
   ];
-  const trayParts = trayNodes();
-  for (let i = 0; i < trayParts.length; i += 1) nodes.push(trayParts[i]);
-  if (mode === "solo" && soloSave.doneIds().indexOf(pageId) !== -1) {
-    const index = solo.items.findIndex((item) => String(item.id) === pageId);
-    const next = solo.items[index + 1];
-    if (next) nodes.push(linkNode({ id: "next", href: soloPath(next.id), label: "Next puzzle" }));
-  }
-  nodes.push(shareNode());
-  if (mode === "echo") nodes.push(streakNode(todayEcho()));
-  return nodes;
+  for (let i = 0; i < extras.length; i += 1) if (extras[i]) stageKids.push(extras[i]);
+  return el("div", { class: "play" }, [
+    el("div", { class: "stage" }, stageKids),
+    sceneNode(currentPlan()),
+    el("div", { class: "check-bar" }, [checkButton()]),
+    dockNode(),
+  ]);
 }
 
 function view() {
@@ -323,10 +525,17 @@ function view() {
     nodes.push(copyLink());
     nodes.push(clearButton());
   } else if (puzzle) {
-    const parts = playNodes(puzzle);
-    for (let i = 0; i < parts.length; i += 1) if (parts[i]) nodes.push(parts[i]);
-    nodes.push(copyLink());
-    nodes.push(clearButton());
+    const extras = [];
+    if (mode === "solo" && soloSave.doneIds().indexOf(pageId) !== -1) {
+      const index = solo.items.findIndex((item) => String(item.id) === pageId);
+      const next = solo.items[index + 1];
+      if (next) extras.push(linkNode({ id: "next", href: soloPath(next.id), label: "Next puzzle" }));
+    }
+    extras.push(shareNode());
+    if (mode === "echo") extras.push(streakNode(todayEcho()));
+    extras.push(copyLink());
+    extras.push(clearButton());
+    nodes.push(playShell(puzzle, extras));
   }
 
   return nodes.filter((node) => node != null);
@@ -338,11 +547,17 @@ function render() {
   const nodes = view();
   app.replaceChildren();
   for (let i = 0; i < nodes.length; i += 1) app.append(nodes[i]);
+  const playing = Boolean(puzzle) && !gate && (mode === "solo" || mode === "echo");
+  app.classList.toggle("is-play", playing);
   if (keep) {
     const next = app.querySelector('[data-focus-id="' + keep + '"]');
     if (next) next.focus();
   }
 }
+
+document.addEventListener("visibilitychange", () => {
+  document.documentElement.classList.toggle("is-hidden", document.hidden);
+});
 
 bindInput();
 render();
