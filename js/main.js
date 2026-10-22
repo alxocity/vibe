@@ -1,5 +1,6 @@
 import { calendar, echoes, lines, playback, solo, tray } from "./catalog.js";
 import { glyphTree, scenePlan, sceneTree } from "./draw.js";
+import { ghostIds, showGhosts } from "./ghosts.js";
 import { el, tx } from "./dom.js";
 import { ACTION_MS, flightPlan, playFly } from "./motion.js";
 import { paint } from "./paint.js";
@@ -64,7 +65,7 @@ let gate = mode === "echo" ? echoGate(todayEcho()) : null;
 let focusAfter = null;
 let activeTab = tray.groups.length ? tray.groups[0].id : "";
 let trayOpen = false;
-let promptOpen = false;
+let promptOpen = true;
 let shakeOnce = false;
 let recent = [];
 let marks = null;
@@ -74,6 +75,7 @@ const flyerToken = Object.create(null);
 
 if (activeSave && puzzle && !gate) {
   picked = activeSave.picked(pageId);
+  if (picked.length > 0) promptOpen = false;
   if (activeSave.doneIds().indexOf(pageId) !== -1) {
     outcome = { status: "pass", line: playbackLine("pass", puzzle.works, lines.notYet) };
     marks = checkMarks(picked, puzzle);
@@ -232,6 +234,7 @@ function clearButton() {
     recent = [];
     outcome = null;
     marks = null;
+    promptOpen = true;
     focusAfter = "clear";
     render();
   });
@@ -288,16 +291,20 @@ function rubric(row) {
 
 function currentPlan() {
   const plan = scenePlan(picked, flat.ids);
-  if (marks && marks.missed.length > 0) plan.ghosts = marks.missed;
+  const missed = marks ? marks.missed : [];
+  const ghosts = ghostIds(missed, showGhosts);
+  if (ghosts.length > 0) plan.ghosts = ghosts;
   return plan;
 }
 
 function toggle(id, fromRecent) {
   const adding = picked.indexOf(id) === -1;
+  const firstPick = adding && picked.length === 0;
   const origin = fromRecent ? document.querySelector('[data-focus-id="recent-' + id + '"]') : blockNode(id);
   const from = boxOf(adding ? origin : layerNode(id));
   picked = toggleId(picked, id);
   recent = remember(recent, id, RECENT_LIMIT);
+  if (firstPick) promptOpen = false;
   outcome = null;
   marks = null;
   activeSave.setPicked(pageId, picked);
@@ -432,6 +439,7 @@ function categoryGrids() {
 }
 
 function setTray(open, focusId) {
+  if (open && !sideBySide()) promptOpen = false;
   trayOpen = open;
   focusAfter = focusId;
   render();
@@ -477,9 +485,24 @@ function inventoryNode(extras) {
   for (let i = 0; i < tray.groups.length; i += 1) tabs.append(tabButton(tray.groups[i]));
   const kids = [handle, recentRow(), tabs, categoryGrids()];
   const extraKids = [];
-  for (let i = 0; i < extras.length; i += 1) if (extras[i]) extraKids.push(extras[i]);
+  const actionKids = [];
+  for (let i = 0; i < extras.length; i += 1) {
+    const node = extras[i];
+    if (!node) continue;
+    const id = node.getAttribute && node.getAttribute("data-focus-id");
+    const nested = node.querySelector ? node.querySelector("[data-focus-id]") : null;
+    const focus = id || (nested ? nested.getAttribute("data-focus-id") : "");
+    if (focus === "copy-link" || focus === "clear") actionKids.push(node);
+    else extraKids.push(node);
+  }
   if (extraKids.length > 0) kids.push(el("div", { class: "dock-extra" }, extraKids));
-  const dockAttrs = { class: "dock", role: "dialog", "aria-label": "Bag" };
+  if (actionKids.length > 0) kids.push(el("div", { class: "bag-actions" }, actionKids));
+  const dockAttrs = {
+    class: "dock",
+    role: "dialog",
+    "aria-label": "Bag",
+    "aria-describedby": "prompt-panel",
+  };
   if (bagModal()) dockAttrs["aria-modal"] = "true";
   const dock = el("section", dockAttrs, kids);
   const inventory = el("div", { class: "inventory", id: "inventory" }, [backdrop, dock]);
@@ -526,6 +549,14 @@ function playShell(row, extras) {
   });
   const situation = el("p", { class: "situation", id: "prompt-panel" }, [tx(row.situation)]);
   if (!promptOpen) situation.hidden = true;
+  situation.addEventListener("click", () => {
+    if (!promptOpen) return;
+    const selected = window.getSelection();
+    if (selected && String(selected).length > 0) return;
+    promptOpen = false;
+    focusAfter = "prompt-toggle";
+    render();
+  });
   let nextLink = null;
   const menuExtras = [];
   for (let i = 0; i < extras.length; i += 1) {
