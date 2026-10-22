@@ -183,56 +183,268 @@ input:focus,
 }
 
 .chamber.is-play {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  max-width: none;
+  padding:
+    max(0.35rem, env(safe-area-inset-top))
+    max(0.4rem, env(safe-area-inset-right))
+    max(0.4rem, env(safe-area-inset-bottom))
+    max(0.4rem, env(safe-area-inset-left));
+}
+.chamber.is-play .mast {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+}
+.chamber.is-play .arch { width: 1.5rem; height: 0.7rem; border-width: 3px; }
+.chamber.is-play h1 {
+  margin: 0;
+  font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+}
+.chamber.is-play > .link {
+  grid-column: 2;
+  grid-row: 1;
+  width: auto;
+  min-height: 2rem;
+  margin: 0;
+  padding: 0.2rem 0.55rem;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.chamber.is-play .warning { grid-column: 1 / -1; grid-row: 2; margin: 0.35rem 0 0; }
+.play {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  position: relative;
+  min-height: 82vh;
+}
+.stage { position: absolute; inset: 0; }
+.chamber.is-play h2 {
+  margin: 0;
+  align-self: flex-start;
+  padding: 0.15rem 0.45rem;
+  font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+  background: var(--card);
+  border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.chamber.is-play .scene {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+}
+.chamber.is-play .scene svg {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  border-width: 4px;
+}
+.chamber.is-play .scene figcaption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+.hud {
+  position: absolute;
+  z-index: 2;
+  top: 0.4rem;
+  left: 0.45rem;
+  right: 0.45rem;
   display: flex;
   flex-direction: column;
-  padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+  align-items: stretch;
+  gap: 0.4rem;
+  pointer-events: none;
 }
-.chamber.is-play .mast { margin-bottom: 0.15rem; }
-.chamber.is-play h1 { font-size: 1.3rem; }
-.chamber.is-play > .link { min-height: 2.2rem; margin-top: 0.1rem; padding-top: 0.35rem; padding-bottom: 0.35rem; }
-.play { display: flex; flex-direction: column; }
-.stage { overflow: visible; }
-.chamber.is-play h2 { font-size: 1.2rem; margin: 0.1rem 0; }
-.chamber.is-play .situation { font-size: 1rem; margin: 0.1rem 0 0.25rem; }
-.chamber.is-play .scene { flex: 0 0 auto; margin: 0.1rem 0; }
-.chamber.is-play .scene svg {
+.hud h2,
+.dialogue,
+.result-card,
+.prompt-toggle,
+.situation { pointer-events: auto; }
+.dialogue { display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+.prompt-toggle {
   width: auto;
-  max-width: 100%;
-  max-height: min(12vh, 4rem);
-  margin-left: auto;
-  margin-right: auto;
+  min-height: 2.2rem;
+  margin: 0;
+  padding: 0.2rem 0.65rem;
+  font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-weight: 700;
+  background: var(--card);
+  border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
 }
-.chamber.is-play .outcome { margin: 0.25rem 0; }
-.chamber.is-play .outcome .frame,
-.chamber.is-play .outcome .rubric { flex: 1 1 8rem; }
-.chamber.is-play .frame { padding: 0.55rem; }
-.check-bar { flex: 0 0 auto; }
-.check-bar .action { margin-top: 0.2rem; }
-.dock {
+.chamber.is-play .situation {
+  margin: 0;
+  max-height: 7.2rem;
+  overflow: auto;
+  padding: 0.45rem 0.6rem;
+  font-size: 1rem;
+  line-height: 1.35;
+  background: var(--card);
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+.situation[hidden] { display: none; }
+.result-card {
+  max-height: 38vh;
+  overflow: auto;
+  padding: 0.55rem 0.65rem;
+  background: var(--card);
+  border: 4px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+.result-card.is-pass { border-color: var(--swatch-gold); box-shadow: 6px 6px 0 var(--swatch-gold); }
+.result-card.is-miss { border-color: var(--swatch-red); box-shadow: 6px 6px 0 var(--swatch-red); }
+.result-kicker {
+  margin: 0;
+  font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.result-card [data-focus-id="outcome"] {
+  margin: 0.25rem 0 0;
+  font-family: Georgia, "Iowan Old Style", Palatino, serif;
+  font-size: 1.15rem;
+  line-height: 1.3;
+}
+.result-card .rubric { margin: 0.45rem 0 0; }
+.result-card .link { margin-top: 0.45rem; }
+.hud-actions {
+  position: absolute;
+  z-index: 4;
+  left: 0.45rem;
+  right: 0.45rem;
+  bottom: 0.4rem;
+  display: flex;
+  align-items: stretch;
+  gap: 0.45rem;
+}
+.bag-wrap {
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  margin-top: 0.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
+}
+.bag-wrap .picked { margin: 0; font-size: 0.72rem; font-weight: 700; text-align: center; }
+.bag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
+  width: auto;
+  min-width: 4.6rem;
+  min-height: 3.5rem;
+  margin: 0;
+  padding: 0.25rem 0.4rem;
   background: var(--card);
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+  font: inherit;
+  color: inherit;
+}
+.bag-icon {
+  display: block;
+  width: 1.15rem;
+  height: 0.85rem;
+  margin-top: 0.28rem;
+  border: 3px solid currentColor;
+  border-radius: 0 0 2px 2px;
+  position: relative;
+}
+.bag-icon::before {
+  content: "";
+  position: absolute;
+  left: 0.18rem;
+  right: 0.18rem;
+  top: -0.42rem;
+  height: 0.32rem;
+  border: 3px solid currentColor;
+  border-bottom: 0;
+}
+.bag-label {
+  font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.hud-actions .action {
+  flex: 1 1 auto;
+  min-height: 3.5rem;
+  margin: 0;
+  font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: var(--swatch-gold);
+  border-width: 4px;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+.inventory {
+  position: absolute;
+  z-index: 3;
+  left: 0.35rem;
+  right: 0.35rem;
+  top: 0.35rem;
+  bottom: 4.7rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.inventory[hidden] { display: none; }
+.inventory-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(36, 25, 16, 0.55);
+  color: transparent;
+}
+.dock {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  overflow: auto;
+  margin: 0;
+  background: var(--card);
+  border: 4px solid var(--ink);
+  box-shadow: 0 -5px 0 var(--ink);
+}
+.dock-handle {
+  display: flex;
+  justify-content: center;
+  padding: 0.4rem 0 0.2rem;
+  touch-action: none;
+}
+.dock-grip {
+  width: 3.2rem;
+  height: 0.45rem;
+  background: var(--ink);
   border: 2px solid var(--ink);
 }
-.dock-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.1rem 0.35rem 0;
-}
-.dock-head .picked { margin: 0; }
-.dock-toggle {
-  width: auto;
-  min-height: 2.25rem;
-  margin: 0.15rem 0;
-  padding: 0.25rem 0.55rem;
-}
-.dock-body { display: flex; flex-direction: column; min-height: 0; }
-.dock-body[hidden],
 .tray[hidden] { display: none; }
 .recent {
   display: flex;
@@ -242,18 +454,32 @@ input:focus,
   padding: 0.15rem 0.35rem 0;
 }
 .recent-empty { margin: 0.15rem 0.2rem; }
-.recent .tile { flex: 1 1 4.5rem; max-width: 7rem; min-height: 2.7rem; height: auto; font-size: 0.68rem; }
-.recent .tile svg { width: 1.25rem; height: 1.25rem; }
-.tablist { display: flex; gap: 0.25rem; padding: 0.2rem 0.35rem; }
-.tab {
-  flex: 1 1 0;
+.recent .tile {
+  flex: 1 1 4.5rem;
+  max-width: 7rem;
   min-width: 0;
-  min-height: 2rem;
-  border: 2px solid var(--ink);
+  min-height: 2.7rem;
+  height: auto;
+  font-size: 0.68rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.recent .tile svg { width: 1.25rem; height: 1.25rem; }
+.tablist { display: flex; flex-wrap: wrap; gap: 0.25rem; padding: 0.2rem 0.35rem; }
+.tab {
+  flex: 1 1 4.5rem;
+  min-width: 0;
+  min-height: 2.2rem;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  border: 3px solid var(--ink);
   background: transparent;
   color: inherit;
-  font: inherit;
+  font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 0.78rem;
   font-weight: 700;
+  box-shadow: 2px 2px 0 var(--ink);
 }
 .tab[aria-selected="true"] {
   background: var(--ink);
@@ -261,25 +487,48 @@ input:focus,
   border-bottom: 4px solid var(--card);
 }
 .dock .tray {
-  max-height: 7.6rem;
-  overflow: auto;
+  overflow: visible;
   align-content: start;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  padding: 0 0.35rem 0.3rem;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  padding: 0.15rem 0.45rem 0.55rem;
+}
+.dock-extra { padding: 0.2rem 0.45rem 0.6rem; }
+.dock-extra .action,
+.dock-extra .link,
+.dock-extra .copy { margin-top: 0.45rem; }
+.chamber.is-play .tile,
+.chamber.is-play .tab,
+.chamber.is-play .bag,
+.chamber.is-play .prompt-toggle,
+.chamber.is-play .hud-actions .action,
+.chamber.is-play > .link {
+  transition: transform 80ms linear, box-shadow 80ms linear;
+}
+.chamber.is-play .tile:active,
+.chamber.is-play .tab:active,
+.chamber.is-play .bag:active,
+.chamber.is-play .prompt-toggle:active,
+.chamber.is-play .hud-actions .action:active,
+.chamber.is-play > .link:active {
+  transform: translate(2px, 2px) scale(0.97);
+  box-shadow: 0 0 0 var(--ink);
 }
 .dock .tile {
+  min-width: 0;
   min-height: 3.15rem;
   height: auto;
   overflow: visible;
   padding: 0.2rem 0.1rem;
   font-size: 0.72rem;
   line-height: 1.1;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .dock .tile svg { width: 1.5rem; height: 1.5rem; }
 
 .flyer {
   position: fixed;
-  z-index: 4;
+  z-index: 6;
   pointer-events: none;
   margin: 0;
   display: flex;
@@ -322,9 +571,23 @@ input:focus,
   100% { transform: translate(0, 0); opacity: 0.4; }
 }
 
+@keyframes screen-shake {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-4px, 1px); }
+  50% { transform: translate(4px, -1px); }
+  75% { transform: translate(-2px, 0); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes sheet-up {
+  from { transform: translateY(12px); }
+  to { transform: translateY(0); }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .scene [data-pose].is-correct { animation: pose-glow 280ms ease-out; }
   .scene [data-pose].is-wrong { animation: pose-shake 280ms ease-in-out; }
+  .stage.is-shake { animation: screen-shake 280ms linear; }
+  .inventory:not([hidden]) .dock { animation: sheet-up 200ms ease-out; }
 }
 
 html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
@@ -336,11 +599,53 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
     min-height: 0;
     overflow: hidden;
   }
-  .chamber.is-play .mast,
-  .chamber.is-play > .link { flex: 0 0 auto; }
-  .play { flex: 1 1 auto; min-height: 0; }
-  .stage { flex: 1 1 auto; min-height: 0; overflow: auto; }
-  .dock { min-height: 0; }
+  .play { min-height: 0; }
+  .stage { overflow: hidden; }
+}
+
+@media (orientation: landscape) and (min-width: 560px) {
+  .chamber.is-play:has(.play.is-open) {
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .play.is-open {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    min-height: 0;
+    height: calc(100dvh - 3.2rem);
+    max-height: 100%;
+  }
+  .play.is-open .stage {
+    position: relative;
+    inset: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    overflow: hidden;
+  }
+  .play.is-open .inventory {
+    position: relative;
+    inset: auto;
+    flex: 0 0 min(20rem, 42%);
+    width: min(20rem, 42%);
+    min-height: 0;
+    bottom: auto;
+    display: flex;
+    overflow: hidden;
+  }
+  .play.is-open .inventory-backdrop { display: none; }
+  .play.is-open .dock {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    max-height: 100%;
+    overflow: auto;
+    box-shadow: -5px 5px 0 var(--ink);
+  }
+  .play.is-open .dock-handle { display: none; }
 }
 
 @media (forced-colors: active) {
@@ -368,6 +673,25 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
     outline-offset: 2px;
   }
   .scene [data-ghost] { opacity: 1; }
+  .result-card,
+  .situation,
+  .prompt-toggle,
+  .bag,
+  .dock,
+  .chamber.is-play h2,
+  .chamber.is-play > .link {
+    background: Canvas;
+    color: CanvasText;
+    border-color: CanvasText;
+    box-shadow: none;
+  }
+  .hud-actions .action {
+    background: Highlight;
+    color: HighlightText;
+    border-color: CanvasText;
+  }
+  .inventory-backdrop { background: Canvas; }
+  .dock-grip { background: CanvasText; }
 }
 
 @media (prefers-reduced-motion: reduce) {

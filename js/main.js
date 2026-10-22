@@ -63,7 +63,9 @@ let outcome = null;
 let gate = mode === "echo" ? echoGate(todayEcho()) : null;
 let focusAfter = null;
 let activeTab = tray.groups.length ? tray.groups[0].id : "";
-let trayOpen = true;
+let trayOpen = false;
+let promptOpen = false;
+let shakeOnce = false;
 let recent = [];
 let marks = null;
 const arriving = Object.create(null);
@@ -78,7 +80,7 @@ if (activeSave && puzzle && !gate) {
   }
 }
 
-const pickedLive = el("p", { class: "picked", role: "status", "aria-live": "polite" });
+const pickedLive = el("p", { id: "picked-count", class: "picked", role: "status", "aria-live": "polite" });
 pickedLive.textContent = "Picked " + String(picked.length);
 
 const resultLive = el("p", {
@@ -106,6 +108,14 @@ function liveText(node, text) {
 
 function prefersReduced() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches === true;
+}
+
+function sideBySide() {
+  return window.matchMedia("(orientation: landscape) and (min-width: 560px)").matches === true;
+}
+
+function bagModal() {
+  return trayOpen && !sideBySide();
 }
 
 function boxOf(node) {
@@ -325,6 +335,7 @@ function onCheck() {
   outcome = { status: result.status, line };
   marks = checkMarks(picked, puzzle);
   if (result.status === "pass") activeSave.markDone(pageId);
+  shakeOnce = result.status !== "pass";
   focusAfter = "outcome";
   render();
 }
@@ -420,42 +431,73 @@ function categoryGrids() {
   return panel;
 }
 
-function dockNode() {
-  const toggleTray = el(
+function setTray(open, focusId) {
+  trayOpen = open;
+  focusAfter = focusId;
+  render();
+}
+
+function bagButton() {
+  const button = el(
     "button",
     {
       type: "button",
-      class: "action action-quiet dock-toggle",
+      class: "bag",
       "data-move": "1",
       "data-focus-id": "tray-toggle",
       "aria-expanded": trayOpen ? "true" : "false",
-      "aria-controls": "dock-body",
+      "aria-controls": "inventory",
+      "aria-describedby": "picked-count",
     },
-    [tx(trayOpen ? "Hide tray" : "Show tray")],
+    [
+      el("span", { class: "bag-icon", "aria-hidden": "true" }),
+      el("span", { class: "bag-label" }, [tx("Bag")]),
+    ],
   );
-  toggleTray.addEventListener("click", () => {
-    trayOpen = !trayOpen;
-    focusAfter = "tray-toggle";
-    render();
+  button.addEventListener("click", () => {
+    const open = !trayOpen;
+    setTray(open, open ? "tab-" + activeTab : "tray-toggle");
   });
-  const tabs = el("div", { class: "tablist", role: "tablist", "aria-label": "Categories" });
-  for (let i = 0; i < tray.groups.length; i += 1) tabs.append(tabButton(tray.groups[i]));
-  const body = el("div", { class: "dock-body", id: "dock-body" }, [recentRow(), tabs, categoryGrids()]);
-  if (!trayOpen) body.hidden = true;
-  const dock = el("section", { class: trayOpen ? "dock" : "dock is-collapsed", "aria-label": "Objects" }, [
-    el("div", { class: "dock-head" }, [pickedCount(), toggleTray]),
-    body,
-  ]);
-  return dock;
+  return el("div", { class: "bag-wrap" }, [button, pickedCount()]);
 }
 
-function outcomeNode(row) {
+function inventoryNode(extras) {
+  const backdrop = el(
+    "button",
+    { type: "button", class: "inventory-backdrop", "data-move": "1", "data-focus-id": "inventory-dismiss" },
+    [tx("Close bag")],
+  );
+  backdrop.addEventListener("click", () => {
+    if (trayOpen) setTray(false, "tray-toggle");
+  });
+  const handle = el("div", { class: "dock-handle" }, [
+    el("span", { class: "dock-grip", "aria-hidden": "true" }),
+  ]);
+  const tabs = el("div", { class: "tablist", role: "tablist", "aria-label": "Categories" });
+  for (let i = 0; i < tray.groups.length; i += 1) tabs.append(tabButton(tray.groups[i]));
+  const kids = [handle, recentRow(), tabs, categoryGrids()];
+  const extraKids = [];
+  for (let i = 0; i < extras.length; i += 1) if (extras[i]) extraKids.push(extras[i]);
+  if (extraKids.length > 0) kids.push(el("div", { class: "dock-extra" }, extraKids));
+  const dockAttrs = { class: "dock", role: "dialog", "aria-label": "Bag" };
+  if (bagModal()) dockAttrs["aria-modal"] = "true";
+  const dock = el("section", dockAttrs, kids);
+  const inventory = el("div", { class: "inventory", id: "inventory" }, [backdrop, dock]);
+  if (!trayOpen) inventory.hidden = true;
+  return inventory;
+}
+
+function resultCard(row, nextLink) {
   if (!outcome || !row) return null;
   liveText(resultLive, outcome.line);
-  return el("div", { class: "outcome" }, [
-    el("div", { class: "frame" }, [resultLive]),
+  const pass = outcome.status === "pass";
+  const kids = [
+    el("p", { class: "result-kicker" }, [tx(pass ? "Stage clear" : "Try again")]),
+    resultLive,
     rubric(row),
-  ]);
+  ];
+  if (nextLink) kids.push(nextLink);
+  return el("div", { class: pass ? "result-card is-pass" : "result-card is-miss" }, kids);
 }
 
 function shareNode() {
@@ -465,17 +507,44 @@ function shareNode() {
 }
 
 function playShell(row, extras) {
-  const stageKids = [
-    el("h2", {}, [tx(mode === "solo" ? row.title : "Echo " + pageId)]),
-    el("p", { class: "situation" }, [tx(row.situation)]),
-    outcomeNode(row),
-  ];
-  for (let i = 0; i < extras.length; i += 1) if (extras[i]) stageKids.push(extras[i]);
-  return el("div", { class: "play" }, [
-    el("div", { class: "stage" }, stageKids),
-    sceneNode(currentPlan()),
-    el("div", { class: "check-bar" }, [checkButton()]),
-    dockNode(),
+  const promptButton = el(
+    "button",
+    {
+      type: "button",
+      class: promptOpen ? "prompt-toggle is-open" : "prompt-toggle",
+      "data-move": "1",
+      "data-focus-id": "prompt-toggle",
+      "aria-expanded": promptOpen ? "true" : "false",
+      "aria-controls": "prompt-panel",
+    },
+    [tx(promptOpen ? "Hide prompt" : "Prompt")],
+  );
+  promptButton.addEventListener("click", () => {
+    promptOpen = !promptOpen;
+    focusAfter = "prompt-toggle";
+    render();
+  });
+  const situation = el("p", { class: "situation", id: "prompt-panel" }, [tx(row.situation)]);
+  if (!promptOpen) situation.hidden = true;
+  let nextLink = null;
+  const menuExtras = [];
+  for (let i = 0; i < extras.length; i += 1) {
+    const node = extras[i];
+    if (!node) continue;
+    if (node.getAttribute && node.getAttribute("data-focus-id") === "next") nextLink = node;
+    else menuExtras.push(node);
+  }
+  return el("div", { class: trayOpen ? "play is-open" : "play" }, [
+    el("div", { class: "stage" }, [
+      sceneNode(currentPlan()),
+      el("div", { class: "hud" }, [
+        el("h2", {}, [tx(mode === "solo" ? row.title : "Echo " + pageId)]),
+        el("div", { class: promptOpen ? "dialogue is-open" : "dialogue" }, [promptButton, situation]),
+        resultCard(row, nextLink),
+      ]),
+      el("div", { class: "hud-actions" }, [bagButton(), checkButton()]),
+    ]),
+    inventoryNode(menuExtras),
   ]);
 }
 
@@ -549,10 +618,36 @@ function render() {
   for (let i = 0; i < nodes.length; i += 1) app.append(nodes[i]);
   const playing = Boolean(puzzle) && !gate && (mode === "solo" || mode === "echo");
   app.classList.toggle("is-play", playing);
+  const outside = app.querySelectorAll(".mast, .hud, .scene");
+  const modal = playing && bagModal();
+  for (let i = 0; i < outside.length; i += 1) outside[i].inert = modal;
+  if (shakeOnce) {
+    shakeOnce = false;
+    const stage = app.querySelector(".stage");
+    if (stage && !prefersReduced()) {
+      stage.classList.add("is-shake");
+      stage.addEventListener("animationend", () => {
+        stage.classList.remove("is-shake");
+      }, { once: true });
+    }
+  }
   if (keep) {
     const next = app.querySelector('[data-focus-id="' + keep + '"]');
     if (next) next.focus();
   }
+}
+
+function dialogFocusables(dialog) {
+  const nodes = dialog.querySelectorAll("a, button, input, [tabindex]");
+  const list = [];
+  for (let i = 0; i < nodes.length; i += 1) {
+    const node = nodes[i];
+    if (node.closest("[hidden]")) continue;
+    if (node.disabled) continue;
+    if (node.tabIndex < 0) continue;
+    list.push(node);
+  }
+  return list;
 }
 
 document.addEventListener("visibilitychange", () => {
@@ -560,4 +655,50 @@ document.addEventListener("visibilitychange", () => {
 });
 
 bindInput();
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && trayOpen) {
+    event.preventDefault();
+    setTray(false, "tray-toggle");
+    return;
+  }
+  if (event.key !== "Tab" || !bagModal()) return;
+  const dialog = document.querySelector(".dock");
+  if (!dialog) return;
+  const list = dialogFocusables(dialog);
+  if (list.length === 0) return;
+  const index = list.indexOf(document.activeElement);
+  event.preventDefault();
+  let next = 0;
+  if (event.shiftKey) next = index <= 0 ? list.length - 1 : index - 1;
+  else if (index >= 0 && index < list.length - 1) next = index + 1;
+  list[next].focus();
+});
+
+window.matchMedia("(orientation: landscape) and (min-width: 560px)").addEventListener("change", () => {
+  if (!trayOpen) return;
+  const id = document.activeElement && document.activeElement.getAttribute("data-focus-id");
+  if (id) focusAfter = id;
+  render();
+});
+
+let swipeStart = null;
+document.addEventListener("pointerdown", (event) => {
+  const handle = event.target && event.target.closest && event.target.closest(".dock-handle");
+  if (!handle || !trayOpen) {
+    swipeStart = null;
+    return;
+  }
+  swipeStart = event.clientY;
+});
+document.addEventListener("pointerup", (event) => {
+  if (swipeStart == null || !trayOpen) return;
+  const delta = event.clientY - swipeStart;
+  swipeStart = null;
+  if (delta > 48) setTray(false, "tray-toggle");
+});
+document.addEventListener("pointercancel", () => {
+  swipeStart = null;
+});
+
 render();
