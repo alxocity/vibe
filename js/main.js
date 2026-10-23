@@ -1024,6 +1024,12 @@ function render() {
   for (let i = 0; i < nodes.length; i += 1) app.append(nodes[i]);
   const playing = Boolean(puzzle) && !gate && (mode === "solo" || mode === "echo");
   app.classList.toggle("is-play", playing);
+  const resultShown = resultPanel.hidden !== true;
+  const resultOpenPanel = resultShown && resultPanel.classList.contains("is-open");
+  document.documentElement.classList.toggle("is-badge", resultShown && !resultOpenPanel);
+  document.documentElement.classList.toggle("is-result", resultOpenPanel);
+  document.documentElement.classList.toggle("is-key", resultShown && resultPanel.classList.contains("is-key"));
+  app.classList.toggle("is-bag", playing && trayOpen);
   const outside = app.querySelectorAll(".mast, .hud, .scene");
   const modal = playing && bagModal();
   for (let i = 0; i < outside.length; i += 1) outside[i].inert = modal;

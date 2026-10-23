@@ -392,10 +392,13 @@ input:focus,
 }
 .play-menu .hint { margin: 0.15rem 0 0; font-size: 0.68rem; }
 body:has(#result-panel:not([hidden]):not(.is-open)) .chamber.is-play h2 { max-width: calc(100% - 5.5rem); }
+/* is-badge, is-result, is-key, and is-bag repeat the :has() rules for a WebView older than Chrome 105. */
+html.is-badge .chamber.is-play h2 { max-width: calc(100% - 5.5rem); }
 .dialogue { display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; }
 .prompt-toggle {
   width: auto;
-  min-height: 2.2rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   margin: 0;
   padding: 0.2rem 0.65rem;
   font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
@@ -787,8 +790,8 @@ body:has(#result-panel:not([hidden]):not(.is-open)) .chamber.is-play h2 { max-wi
 .tablist { display: flex; flex-wrap: wrap; gap: 0.25rem; padding: 0.2rem 0.35rem; }
 .tab {
   flex: 1 1 4.5rem;
-  min-width: 0;
-  min-height: 2.2rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   height: auto;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -808,10 +811,16 @@ body:has(#result-panel:not([hidden]):not(.is-open)) .chamber.is-play h2 { max-wi
 @media (max-height: 420px) {
   .hud-bar { min-height: 0; }
   .menu-toggle { top: 0; }
+  html.is-result .chamber.is-play .situation { max-height: 1.5rem; }
   .dock { max-height: 100%; }
   .result-card { padding: 0; }
   .result-slot.is-open:not(.is-key) { border-top-width: 0; border-bottom-width: 0; }
   body:has(#result-panel.is-key) .chamber.is-play h2 {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  html.is-key .chamber.is-play h2 {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -830,9 +839,23 @@ body:has(#result-panel:not([hidden]):not(.is-open)) .chamber.is-play h2 { max-wi
     border: 0;
     box-shadow: none;
   }
+  html.is-key .chamber.is-play .situation {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 1px;
+    max-height: none;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+    box-shadow: none;
+  }
   #result-panel.is-open.is-key {
     position: fixed;
-    top: 7.5rem;
+    top: 8.25rem;
     right: 0.35rem;
     bottom: 6rem;
     left: 0.35rem;
@@ -1052,19 +1075,30 @@ body:has(#result-panel:not([hidden]):not(.is-open)) .chamber.is-play h2 { max-wi
 }
 .dock .tile svg { width: 1.5rem; height: 1.5rem; }
 @media (max-width: 240px) {
-  .dock-handle { padding: 0.12rem 0 0; }
-  .dock-grip { height: 0.28rem; border-width: 1px; }
+  .dock { height: 100%; }
+  .dock-handle { display: none; }
+  .recent { padding: 0; gap: 0; }
+  .recent-empty {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
   .tablist {
     flex-direction: column;
     align-items: stretch;
-    gap: 0.08rem;
-    padding: 0.04rem 0.2rem;
+    gap: 0;
+    padding: 0 0.2rem;
   }
   .tab {
     flex: 1 1 auto;
     width: 100%;
     overflow-wrap: normal;
-    min-height: 1.5rem;
+    min-height: 2.75rem;
     padding: 0 0.15rem;
     line-height: 1;
     font-size: 0.64rem;
@@ -1173,6 +1207,14 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
 }
 
 @media (orientation: landscape) and (min-width: 560px) {
+  .chamber.is-play.is-bag {
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
   .chamber.is-play:has(.play.is-open) {
     height: 100vh;
     height: 100dvh;
@@ -1231,9 +1273,11 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
   }
   .tile.is-picked [data-swatch] { fill: HighlightText; stroke: HighlightText; }
   .tab[aria-selected="true"] {
-    background: Highlight;
-    color: HighlightText;
-    border-bottom-color: HighlightText;
+    background: ButtonFace;
+    color: ButtonText;
+    border-bottom: 3px solid Highlight;
+    outline: 3px solid Highlight;
+    outline-offset: -3px;
   }
   .scene [data-pose].is-correct {
     filter: none;
@@ -1273,9 +1317,9 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
   .result-card.is-miss,
   .result-badge.is-miss { outline: 3px dashed Highlight; }
   .hud-actions .action {
-    background: Highlight;
-    color: HighlightText;
-    border-color: CanvasText;
+    background: ButtonFace;
+    color: ButtonText;
+    border-color: ButtonText;
   }
   .menu-icon {
     background: CanvasText;
