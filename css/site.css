@@ -12,7 +12,17 @@
 
 * { box-sizing: border-box; }
 
-html { font-size: 100%; }
+html {
+  font-size: 100%;
+  --action-control: 3.5rem;
+  --action-margin-top: 0.5rem;
+  --action-margin-bottom: 0.35rem;
+  --action-gap: 0.45rem;
+  --action-label: 1.2rem;
+  --action-row: calc(var(--action-control) + var(--action-margin-top) + var(--action-margin-bottom) + var(--action-gap) + var(--action-label));
+  --key-slot: 8.2rem;
+  --key-cap: calc(var(--key-slot) - var(--action-row) + var(--action-control) + var(--action-margin-top) + var(--action-margin-bottom) + var(--action-label));
+}
 
 body {
   margin: 0;
@@ -415,6 +425,9 @@ body:has(#result-panel:not([hidden]):not(.is-open)) .chamber.is-play h2 { max-wi
 html.is-badge .chamber.is-play h2 { max-width: calc(100% - 5.5rem); }
 .dialogue { display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; }
 .prompt-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: auto;
   min-width: 2.75rem;
   min-height: 2.75rem;
@@ -425,6 +438,24 @@ html.is-badge .chamber.is-play h2 { max-width: calc(100% - 5.5rem); }
   background: var(--card);
   border: 3px solid var(--ink);
   box-shadow: 3px 3px 0 var(--ink);
+}
+.prompt-icon { display: none; }
+.prompt-label { line-height: 1; }
+.prompt-icon {
+  width: 0.95rem;
+  height: 0.7rem;
+  border: 2px solid currentColor;
+  position: relative;
+}
+.prompt-icon::before {
+  content: "";
+  position: absolute;
+  left: 0.14rem;
+  right: 0.14rem;
+  top: 0.14rem;
+  height: 2px;
+  background: currentColor;
+  box-shadow: 0 0.22rem 0 currentColor;
 }
 .chamber.is-play .situation {
   margin: 0;
@@ -484,14 +515,16 @@ html.is-badge .chamber.is-play h2 { max-width: calc(100% - 5.5rem); }
   pointer-events: auto;
 }
 .result-card.is-key {
-  max-height: 8.2rem;
-  grid-template-rows: minmax(0, 1fr) auto;
+  max-height: none;
+  height: auto;
+  grid-template-rows: auto auto;
 }
 .result-card.is-pass { border-color: var(--swatch-gold); box-shadow: 4px 4px 0 var(--swatch-gold); }
 .result-card.is-miss { border-color: var(--swatch-red); box-shadow: 4px 4px 0 var(--swatch-red); }
 .result-key {
   flex: 0 0 auto;
-  min-height: 2.75rem;
+  min-width: 44px;
+  min-height: 44px;
   margin: 0;
   padding: 0.15rem 0.4rem;
   font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
@@ -570,8 +603,8 @@ html.is-badge .chamber.is-play h2 { max-width: calc(100% - 5.5rem); }
   grid-column: 1 / -1;
   grid-row: 1;
   align-self: stretch;
-  min-height: 0;
-  overflow: auto;
+  min-height: auto;
+  overflow: visible;
 }
 .result-slot.is-open.is-key .result-kicker,
 .result-slot.is-open.is-key .result-live,
@@ -640,15 +673,18 @@ html.is-badge .chamber.is-play h2 { max-width: calc(100% - 5.5rem); }
   }
   .result-slot.is-open .result-key {
     grid-column: 2;
-    min-width: 0;
-    padding: 0.1rem 0.2rem;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.1rem 0.25rem;
     font-size: 0.62rem;
   }
   .result-slot.is-open .result-badge {
     grid-column: 3;
     width: 2.75rem;
-    min-width: 0;
-    max-width: 2.75rem;
+    min-width: 44px;
+    max-width: none;
+    min-height: 44px;
+    height: 2.75rem;
     padding: 0;
     justify-content: center;
     overflow: hidden;
@@ -672,16 +708,25 @@ html.is-badge .chamber.is-play h2 { max-width: calc(100% - 5.5rem); }
   grid-row: 5;
   display: flex;
   align-items: stretch;
-  gap: 0.45rem;
-  margin: 0.5rem 0.45rem 0.35rem;
+  gap: var(--action-gap);
+  margin: var(--action-margin-top) var(--action-gap) var(--action-margin-bottom);
 }
 .bag-wrap {
+  position: relative;
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.05rem;
+}
+.play.is-open .bag-wrap .picked {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.12rem;
+  margin: 0;
+  pointer-events: none;
 }
 .bag-wrap .picked { margin: 0.35rem 0 0; font-size: 0.72rem; font-weight: 700; line-height: 1.15; text-align: center; }
 .bag {
@@ -692,7 +737,7 @@ html.is-badge .chamber.is-play h2 { max-width: calc(100% - 5.5rem); }
   gap: 0.05rem;
   width: auto;
   min-width: 4.6rem;
-  min-height: 3.5rem;
+  min-height: var(--action-control);
   margin: 0;
   padding: 0.25rem 0.4rem;
   background: var(--card);
@@ -728,7 +773,7 @@ html.is-badge .chamber.is-play h2 { max-width: calc(100% - 5.5rem); }
 }
 .hud-actions .action {
   flex: 1 1 auto;
-  min-height: 3.5rem;
+  min-height: var(--action-control);
   margin: 0;
   font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
   font-size: 1.15rem;
@@ -1099,8 +1144,16 @@ html.is-badge .chamber.is-play h2 { max-width: calc(100% - 5.5rem); }
 .dock-handle { display: none; }
 .result-gap { grid-row: 3; height: 0; min-height: 0; pointer-events: none; }
 html.is-result .result-gap { height: 3.5rem; }
-html.is-key .result-gap { height: 8.2rem; }
+html.is-key .result-gap { height: var(--key-slot); }
 html.is-badge .result-gap { height: 3.5rem; }
+/* Portrait bag rows and the fixed result slot share these tracks, including at 200% text. */
+html.is-bag {
+  --bag-pad: max(0.35rem, env(safe-area-inset-top));
+  --bag-mast: 2.75rem;
+  --bag-hud: 6rem;
+  --bag-gap: 3.5rem;
+}
+html.is-bag.is-key { --bag-gap: 8.2rem; }
 html.is-badge .result-slot {
   top: auto;
   bottom: 6rem;
@@ -1110,16 +1163,6 @@ html.is-badge .result-slot {
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
-}
-html.is-bag.is-badge .result-slot,
-html.is-bag .result-slot.is-open,
-html.is-bag #result-panel.is-open.is-key {
-  top: calc(8.5rem + 50vh);
-  top: calc(8.5rem + 50dvh);
-  bottom: auto;
-  height: 3.2rem;
-  max-height: 3.2rem;
-  overflow: hidden;
 }
 @media (min-height: 421px) {
   html.is-key #result-panel.is-open.is-key {
@@ -1133,14 +1176,6 @@ html.is-bag #result-panel.is-open.is-key {
   html.is-key .result-gap { height: 4.6rem; }
   .result-slot.is-open { bottom: 4.2rem; }
   html.is-badge .result-slot { bottom: 4.2rem; }
-  html.is-bag.is-badge .result-slot,
-  html.is-bag .result-slot.is-open,
-  html.is-bag #result-panel.is-open.is-key {
-    top: calc(2.75rem + 50vh);
-    top: calc(2.75rem + 50dvh);
-    height: 3.2rem;
-    max-height: 3.2rem;
-  }
   #result-panel.is-open.is-key { bottom: 4.2rem; }
   .chamber.is-play { padding: 0.15rem 0.25rem; }
   .chamber.is-play h2 {
@@ -1157,28 +1192,42 @@ html.is-bag #result-panel.is-open.is-key {
     flex-wrap: nowrap;
     align-items: center;
     gap: 0.15rem;
-    padding: 0 0.25rem;
+    padding: 0 4.8rem 0 0.25rem;
   }
   .hud-bar { flex: 1 1 auto; min-width: 0; min-height: 0; }
-  .dialogue { flex: 0 0 auto; }
+  .dialogue { flex: 1 1 auto; min-width: 0; max-width: 100%; overflow: hidden; }
+  .chamber.is-play .situation { align-self: stretch; max-width: 100%; min-width: 0; max-height: 2.4rem; }
+  .prompt-icon { display: block; }
+  .prompt-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+  .prompt-toggle {
+    position: relative;
+    width: 2.75rem;
+    padding: 0;
+  }
   .hud-actions { margin: 0.5rem 0.2rem 0.1rem; }
   .bag { min-height: 2.75rem; }
   .hud-actions .action { min-height: 2.75rem; }
   .bag-wrap { position: relative; }
-  .bag-wrap .picked {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0.12rem;
-    margin: 0;
-    font-size: 0.62rem;
-    line-height: 1;
-    pointer-events: none;
-  }
 }
 @media (max-height: 420px) and (orientation: portrait) {
   html.is-key .play.is-open .tablist { display: none; }
-  html.is-bag.is-key .result-gap { height: 3.5rem; }
+  html.is-bag {
+    --bag-pad: 0px;
+    --bag-mast: 0px;
+    --bag-hud: 2.75rem;
+    --bag-gap: 0px;
+  }
+  html.is-bag.is-key { --bag-gap: 0px; }
+  html.is-bag.is-key .result-gap { height: var(--bag-gap); }
   .chamber.is-play { padding: 0 0.1rem; }
   .chamber.is-play .mast {
     position: absolute;
@@ -1209,8 +1258,9 @@ html.is-bag #result-panel.is-open.is-key {
   }
   .chamber.is-play .hud {
     align-items: flex-start;
+    min-height: 2.75rem;
     padding-right: 3.05rem;
-    overflow: hidden;
+    overflow: visible;
   }
   .hud-bar { flex: 1 1 0; min-width: 0; overflow: hidden; }
   .chamber.is-play .hud h2 {
@@ -1227,23 +1277,138 @@ html.is-bag #result-panel.is-open.is-key {
     max-width: 3.5rem;
   }
   .prompt-toggle {
-    display: block;
     width: 100%;
-    min-width: 0;
+    min-width: 2.75rem;
     max-width: 100%;
     overflow: hidden;
-    text-overflow: ellipsis;
+  }
+  .chamber.is-play .situation { max-height: 1.9rem; }
+  .chamber.is-play .arch { display: none; }
+  .chamber.is-play h1 {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 0.58rem;
+    letter-spacing: 0;
+    line-height: 1.7rem;
     white-space: nowrap;
   }
-  .chamber.is-play .situation { max-height: 2.7rem; }
-  .chamber.is-play .arch { display: none; }
-  .chamber.is-play h1 { font-size: 0.75rem; line-height: 1.7rem; }
-  .hud-actions { margin: 0; }
-  .play:not(.is-open) .hud-actions { margin-top: 0.5rem; }
+  .hud-actions { align-items: center; margin: 0; }
+  .play:not(.is-open) .hud-actions { margin-top: 0; }
+  .hud-actions .action {
+    height: 44px;
+    max-height: 44px;
+    min-height: 44px;
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: 1;
+  }
+  .play.is-open .bag-wrap {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    flex: 0 0 4.8rem;
+    width: 4.8rem;
+    max-width: 4.8rem;
+    min-width: 44px;
+    overflow: visible;
+  }
+  .play.is-open .bag-icon { display: none; }
+  .play.is-open .bag {
+    grid-column: 1;
+    flex-direction: row;
+    justify-content: center;
+    width: auto;
+    min-width: 44px;
+    padding: 0 0.15rem;
+  }
+  .play.is-open .bag-wrap .picked {
+    position: absolute;
+    grid-column: auto;
+    left: 0;
+    right: auto;
+    top: auto;
+    bottom: calc(100% + 0.15rem);
+    display: block;
+    width: max-content;
+    min-width: max-content;
+    max-width: none;
+    height: auto;
+    margin: 0;
+    line-height: 1.15;
+    overflow: visible;
+    white-space: nowrap;
+    text-overflow: clip;
+    clip: auto;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .bag { height: 44px; max-height: 44px; }
+  html.is-result:not(.is-bag) .chamber.is-play .scene,
+  html.is-badge:not(.is-bag) .chamber.is-play .scene,
+  html.is-key:not(.is-bag) .chamber.is-play .scene {
+    height: 50vh;
+    height: 50dvh;
+    max-height: 50vh;
+    max-height: 50dvh;
+  }
+  .result-slot.is-open,
+  html.is-badge .result-slot {
+    top: calc(2.75rem + 50vh);
+    top: calc(2.75rem + 50dvh);
+    bottom: auto;
+    height: auto;
+    max-height: 3.2rem;
+  }
+  .bag-wrap .picked {
+    position: static;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    width: auto;
+    height: auto;
+    margin: 0;
+    line-height: 1;
+    overflow: visible;
+    clip: auto;
+    pointer-events: none;
+  }
+  html.is-key .result-gap { height: 3.4rem; }
+  .result-card.is-key .rubric {
+    display: block;
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+  .result-card.is-key .rubric dt,
+  .result-card.is-key .rubric dd { display: inline; }
+  .result-card.is-key .rubric dd::after { content: " "; }
   #result-panel.is-open.is-key {
-    bottom: 3.9rem;
-    height: 4.35rem;
-    max-height: 4.35rem;
+    top: calc(2.75rem + 50vh);
+    top: calc(2.75rem + 50dvh);
+    bottom: auto;
+    height: auto;
+    min-height: 2.75rem;
+    max-height: 3.4rem;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-rows: auto;
+  }
+  .result-slot.is-open.is-key .result-detail {
+    grid-column: 1;
+    grid-row: 1;
+    overflow: visible;
+  }
+  .result-slot.is-open.is-key .result-key { grid-column: 2; grid-row: 1; align-self: end; }
+  .result-slot.is-open.is-key .result-badge { grid-column: 3; grid-row: 1; align-self: end; }
+  .result-slot.is-open.is-key .result-kicker,
+  .result-slot.is-open.is-key .result-live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
   }
 }
 @media (orientation: portrait) {
@@ -1262,8 +1427,176 @@ html.is-bag #result-panel.is-open.is-key {
   .play.is-open .stage {
     grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   }
+  .chamber.is-play.is-bag {
+    padding-top: var(--bag-pad);
+    padding-bottom: 0;
+    grid-template-rows: var(--bag-mast) auto minmax(0, 1fr);
+  }
+  .chamber.is-play.is-bag .play.is-open .hud-actions { margin-bottom: 0; }
+  .chamber.is-play.is-bag .play.is-open .hud {
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+  }
+  .chamber.is-play.is-bag .play.is-open .stage {
+    grid-template-rows: var(--bag-hud) 50vh auto minmax(0, 1fr) auto;
+    grid-template-rows: var(--bag-hud) 50dvh auto minmax(0, 1fr) auto;
+  }
+  html.is-bag.is-result .result-gap,
+  html.is-bag.is-badge .result-gap,
+  html.is-bag.is-key .result-gap { height: var(--bag-gap); }
+  html.is-bag.is-badge .result-slot,
+  html.is-bag .result-slot.is-open,
+  html.is-bag #result-panel.is-open.is-key {
+    top: calc(var(--bag-pad) + var(--bag-mast) + var(--bag-hud) + 50vh);
+    top: calc(var(--bag-pad) + var(--bag-mast) + var(--bag-hud) + 50dvh);
+    bottom: auto;
+    height: var(--bag-gap);
+    max-height: var(--bag-gap);
+    overflow: hidden;
+  }
+}
+@media (orientation: portrait) and (min-height: 421px) {
+  html.is-bag .result-slot.is-open .result-key { min-width: max-content; }
+  html.is-bag.is-key { --bag-gap: 3.5rem; }
+  html.is-key {
+    --key-gap: min(var(--key-cap), max(4.6rem, calc(50vh - 14.5rem)));
+    --key-gap: min(var(--key-cap), max(4.6rem, calc(50dvh - 14.5rem)));
+  }
+  html.is-key .result-gap { height: var(--key-gap); }
+  html.is-key #result-panel.is-open.is-key {
+    bottom: 6rem;
+    height: var(--key-gap);
+    min-height: 0;
+    max-height: var(--key-gap);
+    overflow: hidden;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-rows: auto;
+  }
+  .result-slot.is-open.is-key .result-detail { grid-column: 1; grid-row: 1; overflow: visible; min-height: auto; }
+  .result-slot.is-open.is-key .result-key { grid-column: 2; grid-row: 1; align-self: end; }
+  .result-slot.is-open.is-key .result-badge { grid-column: 3; grid-row: 1; align-self: end; }
+  .result-slot.is-open.is-key .result-kicker,
+  .result-slot.is-open.is-key .result-live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+  html.is-bag #result-panel.is-open.is-key {
+    top: calc(var(--bag-pad) + var(--bag-mast) + var(--bag-hud) + 50vh);
+    top: calc(var(--bag-pad) + var(--bag-mast) + var(--bag-hud) + 50dvh);
+    bottom: auto;
+    height: var(--bag-gap);
+    max-height: var(--bag-gap);
+  }
+  .chamber.is-play.is-bag > .link {
+    height: 2.75rem;
+    min-height: 2.75rem;
+    margin: 0;
+    overflow: hidden;
+  }
+  .chamber.is-play.is-bag .mast {
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+  }
+}
+@media (orientation: portrait) and (min-height: 421px) and (max-width: 240px) {
+  .menu-toggle {
+    top: calc(0.4rem + 0.75rem);
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+  html.is-bag .result-slot.is-open { grid-template-columns: minmax(0, 1fr) 44px; }
+  html.is-bag .result-slot.is-open .result-kicker,
+  html.is-bag .result-slot.is-open .result-live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+  html.is-bag .result-slot.is-open .result-key {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+    min-width: max-content;
+    padding: 0 0.1rem;
+    font-size: 0.62rem;
+  }
+  html.is-bag .result-slot.is-open .result-badge {
+    grid-column: 2;
+    grid-row: 1;
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+  .hud-actions .action,
+  .bag {
+    max-height: 3.5rem;
+    white-space: nowrap;
+  }
+  .bag-wrap .picked {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0.12rem;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+  html.is-key #result-panel.is-open.is-key {
+    bottom: min(var(--action-row), calc(var(--action-row) / 1rem * 16px + 1.5rem));
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+  }
+  .result-slot.is-open.is-key .result-detail { grid-column: 1 / -1; grid-row: 1; }
+  .result-slot.is-open.is-key .result-key { grid-column: 1; grid-row: 2; align-self: end; justify-self: start; }
+  .result-slot.is-open.is-key .result-badge { grid-column: 2; grid-row: 2; align-self: end; }
+  html.is-key .result-slot.is-open.is-key .result-key,
+  html.is-key .result-slot.is-open.is-key .result-badge {
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+  }
+  .result-card .rubric { grid-template-columns: auto minmax(0, 1fr); }
 }
 @media (max-width: 240px) {
+  .hud-actions { min-width: 0; }
+  .bag-wrap { flex: 1 1 0; min-width: 44px; }
+  .bag { width: 100%; min-width: 44px; overflow: hidden; }
+  .play.is-open .bag-wrap { flex: 0 1 auto; }
+  .play.is-open .bag { width: auto; min-width: 44px; }
+  .hud-actions { padding-left: 0.15rem; padding-right: 0.15rem; }
+  .hud-actions .action { flex: 1 1 0; min-width: 44px; min-height: 44px; overflow: hidden; }
+  .chamber.is-play h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+    font-size: 0;
+    line-height: 0;
+  }
   .tab {
     flex: 0 0 auto;
     overflow-wrap: normal;
@@ -1390,11 +1723,22 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
     flex-wrap: wrap;
     align-items: stretch;
   }
-  .play.is-open .dialogue { flex: 1 1 100%; min-width: 0; max-width: 100%; }
+  .play.is-open .dialogue {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    align-items: stretch;
+  }
+  .play.is-open .prompt-toggle { align-self: flex-start; margin-left: 3.25rem; max-width: calc(100% - 3.25rem); }
   .play.is-open .situation {
-    width: 100%;
+    align-self: stretch;
+    width: auto;
     max-width: 100%;
     min-width: 0;
+    margin-left: 0;
+    overflow: hidden;
     overflow-wrap: anywhere;
   }
   .play.is-open .scene { grid-column: 1; grid-row: 2; }
@@ -1452,17 +1796,152 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
   .play.is-open .dock .tile { flex-basis: auto; width: auto; }
 }
 @media (orientation: landscape) and (min-width: 360px) and (max-height: 420px) {
-  .play.is-open .stage {
-    grid-template-rows: auto minmax(2.5rem, 1fr) auto auto auto;
+  html {
+    --action-control: 44px;
+    --action-margin-top: calc(0.5rem / 1rem * 16px);
+    --action-margin-bottom: calc(0.15rem / 1rem * 16px);
+    --action-row: calc(var(--action-control) + var(--action-margin-top) + var(--action-margin-bottom));
+    --key-band: min(calc(var(--key-slot) / 1rem * 16px), calc(100vh - var(--action-row) - 156px));
+    --key-band: min(calc(var(--key-slot) / 1rem * 16px), calc(100dvh - var(--action-row) - 156px));
   }
-  .play.is-open .situation { max-height: 2.4rem; }
+  .play.is-open .stage {
+    grid-template-rows: auto minmax(40px, 1fr) auto auto auto;
+  }
+  .hud { gap: calc(0.15rem / 1rem * 16px); }
+  .chamber.is-play h2 {
+    font-size: calc(0.95rem / 1rem * 16px);
+    padding: calc(0.15rem / 1rem * 16px) calc(0.45rem / 1rem * 16px);
+  }
+  .chamber.is-play > .link,
+  .menu-toggle,
+  .prompt-toggle {
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .menu-toggle,
+  .prompt-toggle {
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    padding: 0;
+  }
+  .play.is-open .situation,
+  .chamber.is-play .situation { max-height: min(2.4rem, 44px); }
+  html.is-result .chamber.is-play .situation,
+  html.is-badge .chamber.is-play .situation {
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    overflow: hidden;
+  }
+  html.is-result .result-gap,
+  html.is-badge .result-gap { height: 44px; }
+  .result-slot.is-open,
+  html.is-badge .result-slot { max-height: 44px; }
+  .result-badge,
+  .result-close,
+  .result-key {
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    font-size: calc(0.72rem / 1rem * 16px);
+  }
+  .result-close {
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+  }
+  .result-key { padding: calc(0.15rem / 1rem * 16px) calc(0.4rem / 1rem * 16px); }
+  .hud-actions {
+    align-items: center;
+    margin-top: var(--action-margin-top);
+    margin-bottom: var(--action-margin-bottom);
+  }
+  .hud-actions .action,
+  .bag {
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: 1;
+  }
+  .bag-wrap .picked {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0.08rem;
+    margin: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    line-height: 1;
+    pointer-events: none;
+  }
+  .result-slot.is-open,
+  html.is-badge .result-slot,
+  #result-panel.is-open.is-key,
   html.is-bag.is-badge .result-slot,
   html.is-bag .result-slot.is-open,
-  html.is-bag #result-panel.is-open.is-key { bottom: 4.2rem; }
-  html.is-bag #result-panel.is-open.is-key,
-  #result-panel.is-open.is-key {
-    height: 4.6rem;
-    max-height: 4.6rem;
+  html.is-bag #result-panel.is-open.is-key {
+    bottom: calc(var(--action-row) + 0.1rem / 1rem * 16px);
+  }
+  #result-panel.is-open.is-key,
+  html.is-bag #result-panel.is-open.is-key {
+    top: auto;
+    height: calc(var(--key-band) - 0.5rem / 1rem * 16px);
+    max-height: calc(var(--key-band) - 0.5rem / 1rem * 16px);
+    overflow: hidden;
+  }
+  html.is-key .result-gap { height: var(--key-band); }
+  html.is-key #result-panel.is-open.is-key {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-rows: auto;
+  }
+  html.is-key .result-slot.is-open.is-key .result-detail {
+    grid-column: 1;
+    grid-row: 1;
+    overflow: hidden;
+  }
+  html.is-key .result-card.is-key .rubric {
+    display: block;
+    margin: 0;
+    font-size: calc(0.62rem / 1rem * 16px);
+    line-height: 1.15;
+  }
+  html.is-key .result-card.is-key .rubric dt,
+  html.is-key .result-card.is-key .rubric dd { display: inline; }
+  html.is-key .result-card.is-key .rubric dd::after { content: " "; }
+  html.is-key .result-slot.is-open.is-key .result-key {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+  }
+  html.is-key .result-slot.is-open.is-key .result-badge {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: center;
+  }
+  html.is-key .result-slot.is-open.is-key .result-kicker,
+  html.is-key .result-slot.is-open.is-key .result-live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+  html.is-key .result-slot.is-open.is-key .result-key,
+  html.is-key .result-slot.is-open.is-key .result-badge {
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
   }
 }
 
@@ -1529,6 +2008,14 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
     background: CanvasText;
     box-shadow: 0 -0.35rem 0 CanvasText, 0 0.35rem 0 CanvasText;
   }
+  .prompt-icon {
+    border-color: CanvasText;
+    background: Canvas;
+  }
+  .prompt-icon::before {
+    background: CanvasText;
+    box-shadow: 0 0.22rem 0 CanvasText;
+  }
   .inventory-backdrop { background: Canvas; }
   .dock-grip { background: CanvasText; }
 }
@@ -1565,5 +2052,70 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
     right: calc(anchor(--gap right) + 0.15rem);
     width: max-content;
     max-height: none;
+  }
+}
+@media (max-height: 420px) and (orientation: portrait) {
+  html.is-bag .result-key { display: none; }
+  html.is-bag .result-slot.is-open .result-kicker,
+  html.is-bag .result-slot.is-open .result-live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+  html.is-bag.is-key #result-panel.is-open.is-key,
+  html.is-bag.is-badge .result-slot,
+  html.is-bag .result-slot.is-open {
+    position-anchor: none;
+    display: flex;
+    align-items: stretch;
+    justify-content: flex-end;
+    top: auto;
+    bottom: 0;
+    left: auto;
+    right: 0;
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    padding: 0;
+    border-width: 0;
+    box-shadow: none;
+    overflow: hidden;
+  }
+  html.is-bag.is-badge .result-badge,
+  html.is-bag .result-slot.is-open .result-badge {
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+  html.is-bag.is-result .play.is-open .hud-actions,
+  html.is-bag.is-badge .play.is-open .hud-actions {
+    padding-right: calc(44px + 0.35rem);
+    pointer-events: none;
+  }
+  html.is-bag.is-result .play.is-open .dock,
+  html.is-bag.is-badge .play.is-open .dock { animation: none; }
+  html.is-bag.is-result .play.is-open .hud-actions .action,
+  html.is-bag.is-result .play.is-open .hud-actions .bag,
+  html.is-bag.is-badge .play.is-open .hud-actions .action,
+  html.is-bag.is-badge .play.is-open .hud-actions .bag {
+    pointer-events: auto;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  html.is-bag.is-result .play.is-open .bag-wrap,
+  html.is-bag.is-badge .play.is-open .bag-wrap {
+    flex: 1 1 0;
+    min-width: 44px;
   }
 }

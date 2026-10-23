@@ -701,7 +701,10 @@ function categoryGrids() {
 }
 
 function setTray(open, focusId) {
-  if (open && !sideBySide()) promptOpen = false;
+  if (open && !sideBySide()) {
+    promptOpen = false;
+    keyOpen = false;
+  }
   trayOpen = open;
   focusAfter = focusId;
   render();
@@ -814,6 +817,10 @@ function resultKeyButton() {
   );
   button.addEventListener("click", () => {
     keyOpen = !keyOpen;
+    if (keyOpen) {
+      trayOpen = false;
+      if (!sideBySide()) promptOpen = false;
+    }
     focusAfter = "result-key";
     render();
   });
@@ -877,8 +884,12 @@ function playShell(row, extras) {
       "data-focus-id": "prompt-toggle",
       "aria-expanded": promptOpen ? "true" : "false",
       "aria-controls": "prompt-panel",
+      "aria-label": "Prompt",
     },
-    [tx(promptOpen ? "Hide prompt" : "Prompt")],
+    [
+      el("span", { class: "prompt-icon", "aria-hidden": "true" }),
+      el("span", { class: "prompt-label" }, [tx("Prompt")]),
+    ],
   );
   promptButton.addEventListener("click", () => {
     promptOpen = !promptOpen;
@@ -988,8 +999,26 @@ function view() {
   return nodes.filter((node) => node != null);
 }
 
+function controlShown(node) {
+  if (!node) return false;
+  if (node.hidden) return false;
+  if (node.closest && node.closest("[hidden]")) return false;
+  const style = window.getComputedStyle(node);
+  return style.display !== "none" && style.visibility !== "hidden";
+}
+
+function focusShown(id) {
+  if (!id) return false;
+  const node = document.querySelector('[data-focus-id="' + id + '"]');
+  if (!node || !controlShown(node)) return false;
+  node.focus();
+  if (id === "copy-link" && node.select) node.select();
+  return document.activeElement === node;
+}
+
 function render() {
   if (!menuOpen) resultRoot.append(shareLive);
+  const used = focusAfter;
   const keep = focusAfter || (document.activeElement && document.activeElement.getAttribute("data-focus-id"));
   focusAfter = null;
   const nodes = view();
@@ -1015,13 +1044,7 @@ function render() {
       }, { once: true });
     }
   }
-  if (keep) {
-    const next = document.querySelector('[data-focus-id="' + keep + '"]');
-    if (next) {
-      next.focus();
-      if (keep === "copy-link" && next.select) next.select();
-    }
-  }
+  if (keep && !focusShown(keep) && !focusShown(used)) focusShown("tray-toggle");
 }
 
 document.addEventListener("visibilitychange", () => {
@@ -1047,10 +1070,17 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+let focusSeen = "";
+document.addEventListener("focusin", (event) => {
+  const id = event.target && event.target.getAttribute && event.target.getAttribute("data-focus-id");
+  if (id) focusSeen = id;
+});
+
 window.matchMedia(sideBySideQuery).addEventListener("change", () => {
   if (!trayOpen) return;
-  const id = document.activeElement && document.activeElement.getAttribute("data-focus-id");
-  if (id) focusAfter = id;
+  const active = document.activeElement;
+  const id = active && active.getAttribute && active.getAttribute("data-focus-id");
+  focusAfter = id || focusSeen || "tray-toggle";
   render();
 });
 
