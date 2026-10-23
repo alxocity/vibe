@@ -137,8 +137,10 @@ function prefersReduced() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches === true;
 }
 
+const sideBySideQuery = "(orientation: landscape) and (min-width: 560px)";
+
 function sideBySide() {
-  return window.matchMedia("(orientation: landscape) and (min-width: 560px)").matches === true;
+  return window.matchMedia(sideBySideQuery).matches === true;
 }
 
 function bagModal() {
@@ -1101,7 +1103,7 @@ document.addEventListener("keydown", (event) => {
   list[next].focus();
 });
 
-window.matchMedia("(orientation: landscape) and (min-width: 560px)").addEventListener("change", () => {
+window.matchMedia(sideBySideQuery).addEventListener("change", () => {
   if (!trayOpen) return;
   const id = document.activeElement && document.activeElement.getAttribute("data-focus-id");
   if (id) focusAfter = id;
