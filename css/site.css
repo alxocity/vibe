@@ -1105,7 +1105,9 @@ body:has(#result-panel:not([hidden]):not(.is-open)) .chamber.is-play h2 { max-wi
 .flyer svg { width: 72%; height: 72%; }
 
 .scene [data-ambient="dust"] { animation: dust-drift 6.4s ease-in-out infinite alternate; }
-.scene [data-ambient="torch"] { animation: torch-breathe 1.6s ease-in-out infinite alternate; }
+.scene [data-ambient="torch"],
+.scene [data-ambient="glow"] { animation: torch-breathe 1.6s ease-in-out infinite alternate; }
+.scene [data-ambient="ripple"] { animation: torch-breathe 2.8s ease-in-out infinite alternate; }
 .scene [data-pose].is-held { opacity: 0; }
 .scene [data-pose].is-correct { filter: drop-shadow(0 0 2px var(--swatch-gold)); }
 .scene [data-pose].is-wrong { opacity: 0.4; }
@@ -1219,7 +1221,8 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
 }
 
 @media (forced-colors: active) {
-  .scene svg { background: Canvas; border-color: CanvasText; }
+  .scene svg { background: Canvas; border-color: CanvasText; color: CanvasText; }
+  .scene [data-layer="room"] * { fill: none; stroke: CanvasText; }
   svg [data-swatch] { fill: CanvasText; }
   .tile.is-picked {
     background: Highlight;

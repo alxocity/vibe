@@ -155,7 +155,8 @@ export const solo = {
       "forbidden": [
         "sword"
       ],
-      "works": "The map and the shield are packed for the river."
+      "works": "The map and the shield are packed for the river.",
+      "backdrop": "river"
     },
     {
       "id": 2,
@@ -173,7 +174,8 @@ export const solo = {
       "forbidden": [
         "sword"
       ],
-      "works": "The dragon is in the picture. Quiet is packed with it."
+      "works": "The dragon is in the picture. Quiet is packed with it.",
+      "backdrop": "path"
     },
     {
       "id": 3,
@@ -214,7 +216,8 @@ export const solo = {
       ],
       "anyOf": [],
       "forbidden": [],
-      "works": "The lamp is on. Quiet is in the room."
+      "works": "The lamp is on. Quiet is in the room.",
+      "backdrop": "office"
     },
     {
       "id": 6,
@@ -312,6 +315,7 @@ export const echoes = {
         "sword"
       ],
       "works": "The pineapple and the lamp are packed.",
+      "backdrop": "garden",
       "fairness": {
         "name": "Alex",
         "date": "2026-10-22"

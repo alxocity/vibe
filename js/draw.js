@@ -237,6 +237,32 @@ function skyShapes(bands) {
   return nodes;
 }
 
+function ground(y, opacity) {
+  return {
+    tag: "rect",
+    attrs: { x: "0", y: String(y), width: "200", height: String(120 - y), fill: "currentColor", opacity },
+  };
+}
+
+function horizon(y, opacity) {
+  const attrs = { x1: "1", y1: String(y), x2: "199", y2: String(y), stroke: "currentColor", "stroke-width": "2" };
+  if (opacity) attrs.opacity = opacity;
+  return { tag: "line", attrs };
+}
+
+function bar(x, y, width) {
+  return {
+    tag: "rect",
+    attrs: { x: String(x), y: String(y), width: String(width), height: "6", fill: "currentColor", opacity: "0.12" },
+  };
+}
+
+function ink(d) {
+  const node = stroke(d);
+  node.attrs.opacity = "0.12";
+  return node;
+}
+
 function roomShapes() {
   return [
     { tag: "rect", attrs: { x: "0", y: "72", width: "200", height: "48", fill: "currentColor", opacity: "0.12" } },
@@ -247,11 +273,104 @@ function roomShapes() {
   ];
 }
 
-const BACKDROPS = { room: roomShapes };
+function gardenShapes() {
+  return [
+    ground(78, "0.1"),
+    horizon(78, "0.12"),
+    ink("M16 116 C16 102 30 100 30 116"),
+    ink("M24 116 C24 108 36 106 36 116"),
+    ink("M158 116 C158 98 176 96 176 116"),
+    ink("M168 116 C168 106 184 104 184 116"),
+  ];
+}
+
+function gateShapes() {
+  return [
+    ground(96, "0.1"),
+    horizon(96, "0.12"),
+    ink("M150 116 V104"),
+    ink("M186 116 V104"),
+    ink("M150 104 Q168 100 186 104"),
+  ];
+}
+
+function hallShapes() {
+  return [
+    ground(86, "0.1"),
+    horizon(86, "0.12"),
+    ink("M14 36 V86"),
+    ink("M26 36 V86"),
+    ink("M174 36 V86"),
+    ink("M186 36 V86"),
+  ];
+}
+
+function kitchenShapes() {
+  return [
+    ground(92, "0.08"),
+    horizon(92, "0.12"),
+    bar(24, 92, 152),
+    ink("M32 116 V104 H46 V116"),
+    ink("M170 116 V104 H184 V116"),
+  ];
+}
+
+function pathShapes() {
+  return [
+    ground(72, "0.08"),
+    horizon(72, "0.12"),
+    ink("M68 118 L96 74"),
+    ink("M132 118 L104 74"),
+  ];
+}
+
+function riverShapes() {
+  return [
+    ground(84, "0.12"),
+    horizon(84, "0.12"),
+    ink("M1 96 C40 90 70 102 110 96 C150 90 170 102 199 96"),
+    ink("M1 108 C50 102 80 114 120 108 C160 102 180 114 199 108"),
+  ];
+}
+
+function shoreShapes() {
+  return [
+    { tag: "rect", attrs: { x: "0", y: "74", width: "200", height: "14", fill: "currentColor", opacity: "0.08" } },
+    ground(88, "0.12"),
+    horizon(88, "0.12"),
+    { tag: "circle", attrs: { cx: "26", cy: "110", r: "3", fill: "currentColor" } },
+    { tag: "circle", attrs: { cx: "170", cy: "106", r: "2", fill: "currentColor" } },
+  ];
+}
+
+function officeShapes() {
+  return [
+    ground(84, "0.08"),
+    horizon(84, "0.12"),
+    bar(36, 100, 128),
+  ];
+}
+
+const BACKDROPS = {
+  room: roomShapes,
+  garden: gardenShapes,
+  gate: gateShapes,
+  hall: hallShapes,
+  kitchen: kitchenShapes,
+  office: officeShapes,
+  path: pathShapes,
+  river: riverShapes,
+  shore: shoreShapes,
+};
 
 export function backdropShapes(name) {
   if (!Object.hasOwn(BACKDROPS, name)) return roomShapes();
   return BACKDROPS[name]();
+}
+
+function themeName(name) {
+  if (!Object.hasOwn(BACKDROPS, name)) return "room";
+  return name;
 }
 
 export function glyphTree(id) {
@@ -289,10 +408,10 @@ function ambientDust() {
   };
 }
 
-function ambientTorch() {
+function ambientTorch(transform) {
   return {
     tag: "g",
-    attrs: { "data-ambient": "torch", transform: "translate(4 28) scale(0.45)" },
+    attrs: { "data-ambient": "torch", transform: transform || "translate(4 28) scale(0.45)" },
     kids: [
       stroke("M16 28 C11 22 12 16 16 8 C20 16 21 22 16 28 Z"),
       stroke("M16 24 C14 20 18 18 16 14"),
@@ -300,12 +419,83 @@ function ambientTorch() {
   };
 }
 
+function ambientGlow(transform) {
+  return {
+    tag: "g",
+    attrs: { "data-ambient": "glow", transform },
+    kids: [
+      ring("16", "16", "7"),
+      { tag: "circle", attrs: { cx: "16", cy: "16", r: "2", fill: "currentColor" } },
+    ],
+  };
+}
+
+function ambientRipple(transform) {
+  return {
+    tag: "g",
+    attrs: { "data-ambient": "ripple", transform },
+    kids: [
+      stroke("M4 16 C10 12 18 20 28 16"),
+      stroke("M4 22 C12 18 18 26 28 22"),
+    ],
+  };
+}
+
+function specks(points) {
+  const kids = [];
+  for (let i = 0; i < points.length; i += 1) {
+    kids.push({
+      tag: "circle",
+      attrs: { cx: String(points[i][0]), cy: String(points[i][1]), r: points[i][2], fill: "currentColor" },
+    });
+  }
+  return { tag: "g", attrs: { "data-ambient": "dust" }, kids };
+}
+
+const AMBIENT = {
+  room: () => ({ light: ambientTorch(), dust: ambientDust() }),
+  garden: () => ({
+    light: ambientGlow("translate(168 2) scale(0.5)"),
+    dust: specks([[34, 18, "1.1"], [96, 12, "0.8"], [140, 22, "1"]]),
+  }),
+  gate: () => ({
+    light: ambientTorch("translate(48 40) scale(0.4)"),
+    dust: specks([[40, 24, "0.8"], [100, 16, "1"], [156, 28, "0.9"]]),
+  }),
+  hall: () => ({
+    light: ambientTorch("translate(8 32) scale(0.4)"),
+    dust: specks([[48, 22, "0.9"], [100, 14, "1.1"], [152, 24, "0.8"]]),
+  }),
+  kitchen: () => ({
+    light: ambientTorch("translate(40 64) scale(0.4)"),
+    dust: specks([[48, 70, "1"], [70, 62, "0.8"], [154, 66, "1"]]),
+  }),
+  office: () => ({
+    light: ambientGlow("translate(150 78) scale(0.4)"),
+    dust: specks([[30, 20, "0.8"], [88, 16, "1"], [132, 24, "0.9"]]),
+  }),
+  path: () => ({
+    light: ambientGlow("translate(88 58) scale(0.35)"),
+    dust: specks([[78, 96, "0.9"], [100, 84, "1"], [122, 100, "0.8"]]),
+  }),
+  river: () => ({
+    light: ambientRipple("translate(148 90) scale(0.8)"),
+    dust: specks([[36, 100, "1"], [96, 108, "0.8"], [124, 98, "1.1"]]),
+  }),
+  shore: () => ({
+    light: ambientRipple("translate(16 96) scale(0.8)"),
+    dust: specks([[48, 104, "0.9"], [110, 110, "1"], [150, 100, "0.8"]]),
+  }),
+};
+
 export function sceneTree(plan) {
+  const theme = themeName(plan.backdrop);
+  const ambient = Object.hasOwn(AMBIENT, theme) ? AMBIENT[theme]() : AMBIENT.room();
   const layers = [
-    { tag: "g", attrs: { "data-layer": "room" }, kids: backdropShapes(plan.backdrop) },
-    ambientTorch(),
+    { tag: "g", attrs: { "data-layer": "room", "data-theme": theme }, kids: backdropShapes(plan.backdrop) },
+    ambient.light,
     { tag: "g", attrs: { "data-layer": "sky" }, kids: skyShapes(plan.sky) },
-    ambientDust(),
+    ambient.dust,
   ];
   const seen = Object.create(null);
   for (let i = 0; i < plan.order.length; i += 1) {
