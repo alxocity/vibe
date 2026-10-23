@@ -10,7 +10,7 @@ import { bindInput } from "./input.js";
 import { echoHref, linksFor } from "./nav.js";
 import { pageAddress, soloPath } from "./paths.js";
 import { playbackLine } from "./playback.js";
-import { echoGateStatus, liveEchoIds, shareLine, visibleStreak } from "./progress.js";
+import { echoGateStatus, liveEchoIds, practiceEcho, shareLine, visibleStreak } from "./progress.js";
 import { browserBackend, openSave } from "./save.js";
 import { flattenTray } from "./tray.js";
 
@@ -36,7 +36,18 @@ function rowById(items, id) {
   return null;
 }
 
+function replayRow(today) {
+  return practiceEcho(echoes.items, today, withdrawn);
+}
+
+function practicing() {
+  const row = replayRow(todayEcho());
+  return row != null && String(row.id) === String(pageId);
+}
+
 function echoGate(today) {
+  const replay = replayRow(today);
+  if (replay && String(replay.id) === String(pageId)) return null;
   return echoGateStatus(rowById(echoes.items, pageId), pageId, today, withdrawn);
 }
 
@@ -77,7 +88,7 @@ const arriving = Object.create(null);
 const flyers = Object.create(null);
 const flyerToken = Object.create(null);
 
-if (activeSave && puzzle && !gate) {
+if (activeSave && puzzle && !gate && !practicing()) {
   picked = activeSave.picked(pageId);
   if (picked.length > 0) promptOpen = false;
   if (activeSave.doneIds().indexOf(pageId) !== -1) {
@@ -502,6 +513,18 @@ function currentPlan() {
 }
 
 function toggle(id, fromRecent) {
+  if (mode === "echo") {
+    gate = echoGate(todayEcho());
+    if (gate) {
+      outcome = null;
+      resultOpen = false;
+      keyOpen = false;
+      marks = null;
+      focusAfter = "copy-link";
+      render();
+      return;
+    }
+  }
   const adding = picked.indexOf(id) === -1;
   const firstPick = adding && picked.length === 0;
   const origin = fromRecent ? document.querySelector('[data-focus-id="recent-' + id + '"]') : blockNode(id);
@@ -513,7 +536,7 @@ function toggle(id, fromRecent) {
   resultOpen = false;
   keyOpen = false;
   marks = null;
-  activeSave.setPicked(pageId, picked);
+  if (!practicing()) activeSave.setPicked(pageId, picked);
   focusAfter = (fromRecent ? "recent-" : "block-") + id;
   if (adding) arriving[id] = true;
   else delete arriving[id];
@@ -551,7 +574,7 @@ function onCheck() {
   resultOpen = true;
   keyOpen = false;
   marks = checkMarks(picked, puzzle);
-  if (result.status === "pass") activeSave.markDone(pageId);
+  if (result.status === "pass" && !practicing()) activeSave.markDone(pageId);
   shakeOnce = result.status !== "pass";
   focusAfter = "outcome";
   render();
@@ -867,7 +890,7 @@ function syncResult(row, nextLink) {
 }
 
 function shareNode() {
-  if (mode !== "echo" || gate || !dailySave) return null;
+  if (mode !== "echo" || gate || !dailySave || practicing()) return null;
   if (dailySave.doneIds().indexOf(pageId) === -1) return null;
   return field("share-card", "Share card", shareLine(pageId, lines), "Select the line and copy it.");
 }
@@ -914,8 +937,9 @@ function playShell(row, extras) {
       sceneNode(currentPlan()),
       el("div", { class: "hud" }, [
         el("div", { class: "hud-bar" }, [
-          el("h2", {}, [tx(mode === "solo" ? row.title : "Echo " + pageId)]),
-        ]),
+          el("h2", {}, [tx(practicing() ? "Practice" : mode === "solo" ? row.title : "Echo " + pageId)]),
+          practicing() ? el("p", { class: "practice" }, [tx(lines.practice)]) : null,
+        ].filter((node) => node != null)),
         el("div", { class: promptOpen ? "dialogue is-open" : "dialogue" }, [promptButton, situation]),
       ]),
       menuButton(),
@@ -931,6 +955,7 @@ function view() {
   const today = todayEcho();
   const todayRow = rowById(echoes.items, today);
   const todayOpen = echoGateStatus(todayRow, today, today, withdrawn) == null;
+  const replay = replayRow(today);
 
   const home = linksFor(mode, {}).find((item) => item.id === "home");
   if (home) nodes.push(linkNode(home));
@@ -947,14 +972,18 @@ function view() {
     nodes.push(copyLink());
   } else if (mode === "daily") {
     nodes.push(el("h2", {}, [tx("Daily")]));
-    if (!todayOpen) nodes.push(el("p", { class: "frame" }, [tx(lines.noPuzzle)]));
-    else {
+    if (todayOpen) {
       nodes.push(el("p", { class: "echo-id" }, [tx("Echo " + today)]));
       nodes.push(linkNode({ id: "today", href: echoHref(today), label: "Open today" }));
       nodes.push(field("copy-link", "Copy link", pageAddress({ origin: window.location.origin, pathname: echoHref(today) }), "Select the address and copy it."));
-    }
+    } else if (replay) {
+      nodes.push(el("p", { class: "frame" }, [tx(lines.practice)]));
+      nodes.push(el("p", { class: "echo-id" }, [tx("Echo " + replay.id)]));
+      nodes.push(linkNode({ id: "replay", href: echoHref(replay.id), label: lines.replay }));
+      nodes.push(field("copy-link", "Copy link", pageAddress({ origin: window.location.origin, pathname: echoHref(replay.id) }), "Select the address and copy it."));
+    } else nodes.push(el("p", { class: "frame" }, [tx(lines.noPuzzle)]));
     nodes.push(streakNode(today));
-    if (!todayOpen) nodes.push(copyLink());
+    if (!todayOpen && !replay) nodes.push(copyLink());
     nodes.push(clearButton());
   } else if (mode === "playback") {
     nodes.push(el("h2", {}, [tx("Playback")]));

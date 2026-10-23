@@ -2,6 +2,8 @@
   "notYet": "Not yet.",
   "notToday": "not today",
   "noPuzzle": "No puzzle today.",
+  "practice": "Practice. This replay does not count as today's daily.",
+  "replay": "Replay",
   "storageWarning": "progress won't be saved.",
   "clear": "End and clear all progress",
   "sharePrefix": "Echo ",

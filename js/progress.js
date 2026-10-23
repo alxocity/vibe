@@ -60,6 +60,33 @@ export function echoGateStatus(row, pageId, todayId, withdrawn) {
   return null;
 }
 
+export function practiceEcho(items, todayId, withdrawn) {
+  const today = String(todayId);
+  let best = null;
+  let bestId = null;
+  let sawToday = false;
+  const dropped = withdrawn || [];
+  for (let i = 0; i < items.length; i += 1) {
+    const row = items[i];
+    const idText = String(row.id);
+    if (idText === today) {
+      sawToday = true;
+      if (droppedHas(dropped, idText)) return null;
+      if (echoChecked(row)) return null;
+      continue;
+    }
+    if (!echoChecked(row) || droppedHas(dropped, idText)) continue;
+    const id = BigInt(row.id);
+    if (id < 0n || id >= BigInt(today)) continue;
+    if (bestId == null || id > bestId) {
+      best = row;
+      bestId = id;
+    }
+  }
+  if (!sawToday && droppedHas(dropped, today)) return null;
+  return best;
+}
+
 function cmpDecimal(a, b) {
   const aa = BigInt(a);
   const bb = BigInt(b);

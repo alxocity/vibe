@@ -275,6 +275,7 @@ input:focus,
   pointer-events: none;
 }
 .hud h2,
+.practice,
 .dialogue,
 .result-card,
 .result-badge,
@@ -284,10 +285,19 @@ input:focus,
 .situation { pointer-events: auto; }
 .hud-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   min-height: 2.75rem;
   min-width: 0;
   padding-left: 3.15rem;
+}
+.practice {
+  flex: 1 0 100%;
+  margin: 0;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  background: var(--paper);
 }
 .menu-toggle {
   position: absolute;
