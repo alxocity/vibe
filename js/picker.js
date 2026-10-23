@@ -1,7 +1,5 @@
 // Picker state. No clock, storage, locale, or random source.
 
-export const RECENT_LIMIT = 8;
-
 function has(list, id) {
   for (let i = 0; i < list.length; i += 1) {
     if (list[i] === id) return true;
@@ -17,17 +15,6 @@ export function toggleId(picked, id) {
     else next.push(picked[i]);
   }
   if (!found) next.push(id);
-  return next;
-}
-
-export function remember(recent, id, limit) {
-  const cap = limit > 0 ? limit : 1;
-  const next = [id];
-  for (let i = 0; i < recent.length; i += 1) {
-    if (recent[i] === id) continue;
-    next.push(recent[i]);
-    if (next.length >= cap) break;
-  }
   return next;
 }
 

@@ -4,7 +4,7 @@ import { ghostIds, showGhosts } from "./ghosts.js";
 import { el, tx } from "./dom.js";
 import { ACTION_MS, flightPlan, playFly } from "./motion.js";
 import { paint } from "./paint.js";
-import { RECENT_LIMIT, blocksFor, checkMarks, remember, toggleId } from "./picker.js";
+import { blocksFor, checkMarks, toggleId } from "./picker.js";
 import { echoId, score } from "./score.js";
 import { bindInput } from "./input.js";
 import { echoHref, linksFor } from "./nav.js";
@@ -82,7 +82,6 @@ let promptOpen = true;
 let menuOpen = false;
 let resetArmed = false;
 let shakeOnce = false;
-let recent = [];
 let marks = null;
 const arriving = Object.create(null);
 const flyers = Object.create(null);
@@ -119,16 +118,6 @@ resultRoot.append(resultPanel);
 resultRoot.append(shareLive);
 document.body.append(resultRoot);
 
-function seedRecent() {
-  const next = [];
-  for (let i = picked.length - 1; i >= 0; i -= 1) {
-    next.push(picked[i]);
-    if (next.length >= RECENT_LIMIT) break;
-  }
-  recent = next;
-}
-seedRecent();
-
 function liveText(node, text) {
   if (node.textContent !== text) node.textContent = text;
 }
@@ -137,14 +126,10 @@ function prefersReduced() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches === true;
 }
 
-const sideBySideQuery = "(orientation: landscape) and (min-width: 560px)";
+const sideBySideQuery = "(orientation: landscape) and (min-width: 360px)";
 
 function sideBySide() {
   return window.matchMedia(sideBySideQuery).matches === true;
-}
-
-function bagModal() {
-  return trayOpen && !sideBySide();
 }
 
 function boxOf(node) {
@@ -355,7 +340,6 @@ function wipeProgress() {
   settleFlights();
   activeSave.clearAll();
   picked = [];
-  recent = [];
   outcome = null;
   resultOpen = false;
   keyOpen = false;
@@ -514,7 +498,7 @@ function currentPlan() {
   return plan;
 }
 
-function toggle(id, fromRecent) {
+function toggle(id) {
   if (mode === "echo") {
     gate = echoGate(todayEcho());
     if (gate) {
@@ -529,21 +513,20 @@ function toggle(id, fromRecent) {
   }
   const adding = picked.indexOf(id) === -1;
   const firstPick = adding && picked.length === 0;
-  const origin = fromRecent ? document.querySelector('[data-focus-id="recent-' + id + '"]') : blockNode(id);
+  const origin = blockNode(id);
   const from = boxOf(adding ? origin : layerNode(id));
   picked = toggleId(picked, id);
-  recent = remember(recent, id, RECENT_LIMIT);
   if (firstPick) promptOpen = false;
   outcome = null;
   resultOpen = false;
   keyOpen = false;
   marks = null;
   if (!practicing()) activeSave.setPicked(pageId, picked);
-  focusAfter = (fromRecent ? "recent-" : "block-") + id;
+  focusAfter = "block-" + id;
   if (adding) arriving[id] = true;
   else delete arriving[id];
   render();
-  const back = fromRecent ? document.querySelector('[data-focus-id="recent-' + id + '"]') : blockNode(id);
+  const back = blockNode(id);
   const to = boxOf(adding ? layerNode(id) : back);
   const plan = flightPlan(prefersReduced(), from, to);
   if (plan.kind === "fly") startFly(id, from, to);
@@ -575,6 +558,7 @@ function onCheck() {
   outcome = { status: result.status, line };
   resultOpen = true;
   keyOpen = false;
+  trayOpen = false;
   marks = checkMarks(picked, puzzle);
   if (result.status === "pass" && !practicing()) activeSave.markDone(pageId);
   shakeOnce = result.status !== "pass";
@@ -633,6 +617,7 @@ function dismissResult() {
 function showResult() {
   if (!outcome) return;
   resultOpen = true;
+  trayOpen = false;
   focusAfter = "result-badge";
   render();
   focusResult("result-badge");
@@ -653,7 +638,7 @@ function tileButton(block, focusPrefix) {
     "aria-pressed": on ? "true" : "false",
   });
   button.append(paint(glyphTree(block.id)), tx(block.label));
-  button.addEventListener("click", () => toggle(block.id, focusPrefix === "recent-"));
+  button.addEventListener("click", () => toggle(block.id));
   return button;
 }
 
@@ -670,20 +655,6 @@ function checkButton() {
   );
   check.addEventListener("click", onCheck);
   return check;
-}
-
-function recentRow() {
-  const row = el("div", { class: "recent", role: "group", "aria-label": "Recent" });
-  if (recent.length === 0) {
-    row.append(el("p", { class: "recent-empty" }, [tx("None yet")]));
-    return row;
-  }
-  for (let i = 0; i < recent.length; i += 1) {
-    const id = recent[i];
-    const label = flat.labels[id] || id;
-    row.append(tileButton({ id, label }, "recent-"));
-  }
-  return row;
 }
 
 function tabButton(group) {
@@ -774,7 +745,7 @@ function inventoryNode(extras) {
   ]);
   const tabs = el("div", { class: "tablist", role: "tablist", "aria-label": "Categories" });
   for (let i = 0; i < tray.groups.length; i += 1) tabs.append(tabButton(tray.groups[i]));
-  const kids = [handle, recentRow(), tabs, categoryGrids()];
+  const kids = [handle, tabs, categoryGrids()];
   const extraKids = [];
   const actionKids = [];
   for (let i = 0; i < extras.length; i += 1) {
@@ -788,14 +759,12 @@ function inventoryNode(extras) {
   }
   if (extraKids.length > 0) kids.push(el("div", { class: "dock-extra" }, extraKids));
   if (actionKids.length > 0) kids.push(el("div", { class: "bag-actions" }, actionKids));
-  const dockAttrs = {
+  const dock = el("section", {
     class: "dock",
     role: "dialog",
     "aria-label": "Bag",
     "aria-describedby": "prompt-panel",
-  };
-  if (bagModal()) dockAttrs["aria-modal"] = "true";
-  const dock = el("section", dockAttrs, kids);
+  }, kids);
   const inventory = el("div", { class: "inventory", id: "inventory" }, [backdrop, dock]);
   if (!trayOpen) inventory.hidden = true;
   return inventory;
@@ -867,6 +836,7 @@ function resultKicker(pass, score) {
 function syncResult(row, nextLink) {
   if (!outcome || !row) {
     resultPanel.hidden = true;
+    resultPanel.className = "result-slot";
     clearPanelExtras();
     return;
   }
@@ -936,7 +906,6 @@ function playShell(row, extras) {
   syncResult(row, nextLink);
   return el("div", { class: trayOpen ? "play is-open" : "play" }, [
     el("div", { class: "stage" }, [
-      sceneNode(currentPlan()),
       el("div", { class: "hud" }, [
         el("div", { class: "hud-bar" }, [
           el("h2", {}, [tx(practicing() ? "Practice" : mode === "solo" ? row.title : "Echo " + pageId)]),
@@ -944,11 +913,13 @@ function playShell(row, extras) {
         ].filter((node) => node != null)),
         el("div", { class: promptOpen ? "dialogue is-open" : "dialogue" }, [promptButton, situation]),
       ]),
+      sceneNode(currentPlan()),
+      el("div", { class: "result-gap" }),
       menuButton(),
       menuPanel(),
+      inventoryNode(menuExtras),
       el("div", { class: "hud-actions" }, [bagButton(), checkButton()]),
     ]),
-    inventoryNode(menuExtras),
   ]);
 }
 
@@ -1031,11 +1002,9 @@ function render() {
   document.documentElement.classList.toggle("is-badge", resultShown && !resultOpenPanel);
   document.documentElement.classList.toggle("is-result", resultOpenPanel);
   document.documentElement.classList.toggle("is-key", resultShown && resultPanel.classList.contains("is-key"));
-  app.classList.toggle("is-bag", playing && trayOpen);
-  const outside = app.querySelectorAll(".mast, .hud, .scene");
-  const modal = playing && bagModal();
-  for (let i = 0; i < outside.length; i += 1) outside[i].inert = modal;
-  resultPanel.inert = modal;
+  const bagOpen = playing && trayOpen;
+  app.classList.toggle("is-bag", bagOpen);
+  document.documentElement.classList.toggle("is-bag", bagOpen);
   if (shakeOnce) {
     shakeOnce = false;
     const stage = app.querySelector(".stage");
@@ -1053,19 +1022,6 @@ function render() {
       if (keep === "copy-link" && next.select) next.select();
     }
   }
-}
-
-function dialogFocusables(dialog) {
-  const nodes = dialog.querySelectorAll("a, button, input, [tabindex]");
-  const list = [];
-  for (let i = 0; i < nodes.length; i += 1) {
-    const node = nodes[i];
-    if (node.closest("[hidden]")) continue;
-    if (node.disabled) continue;
-    if (node.tabIndex < 0) continue;
-    list.push(node);
-  }
-  return list;
 }
 
 document.addEventListener("visibilitychange", () => {
@@ -1088,19 +1044,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && resultOpen) {
     event.preventDefault();
     dismissResult();
-    return;
   }
-  if (event.key !== "Tab" || !bagModal()) return;
-  const dialog = document.querySelector(".dock");
-  if (!dialog) return;
-  const list = dialogFocusables(dialog);
-  if (list.length === 0) return;
-  const index = list.indexOf(document.activeElement);
-  event.preventDefault();
-  let next = 0;
-  if (event.shiftKey) next = index <= 0 ? list.length - 1 : index - 1;
-  else if (index >= 0 && index < list.length - 1) next = index + 1;
-  list[next].focus();
 });
 
 window.matchMedia(sideBySideQuery).addEventListener("change", () => {

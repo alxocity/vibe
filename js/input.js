@@ -6,6 +6,12 @@ function movers() {
 
 function columnCount(grid) {
   const style = getComputedStyle(grid);
+  if (style.display !== "grid") {
+    const flow = style.flexDirection;
+    if (flow === "column" || flow === "column-reverse") return 1;
+    const count = grid.querySelectorAll(":scope > [data-move]").length;
+    return count > 0 ? count : 1;
+  }
   const template = style.gridTemplateColumns;
   if (!template || template === "none") return 1;
   const parts = template.trim().split(/\s+/);
