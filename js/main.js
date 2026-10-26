@@ -1,5 +1,18 @@
+import {
+  bumpScale,
+  bumpTurn,
+  closeness,
+  degrees,
+  panPose,
+  poseTransform,
+  restPose,
+  samePose,
+  scalePose,
+  span,
+  turnPose,
+} from "./arrange.js";
 import { calendar, echoes, lines, playback, solo, tray } from "./catalog.js";
-import { glyphTree, scenePlan, sceneTree, shareGlyph } from "./draw.js";
+import { PLACE, glyphTree, scenePlan, sceneTree, shareGlyph } from "./draw.js";
 import { ghostIds, showGhosts } from "./ghosts.js";
 import { el, tx } from "./dom.js";
 import { ACTION_MS, flightPlan, playFly } from "./motion.js";
@@ -71,6 +84,8 @@ const puzzle = mode === "solo" ? rowById(solo.items, pageId) : mode === "echo" ?
 const activeSave = mode === "solo" ? soloSave : dailySave;
 
 let picked = [];
+let poses = Object.create(null);
+let selected = null;
 let outcome = null;
 let resultOpen = false;
 let keyOpen = false;
@@ -89,6 +104,7 @@ const flyerToken = Object.create(null);
 
 if (activeSave && puzzle && !gate && !practicing()) {
   picked = activeSave.picked(pageId);
+  poses = activeSave.posed(pageId);
   if (picked.length > 0) promptOpen = false;
   if (activeSave.doneIds().indexOf(pageId) !== -1) {
     outcome = { status: "pass", line: playbackLine("pass", puzzle.works, lines.notYet) };
@@ -340,6 +356,8 @@ function wipeProgress() {
   settleFlights();
   activeSave.clearAll();
   picked = [];
+  poses = Object.create(null);
+  selected = null;
   outcome = null;
   resultOpen = false;
   keyOpen = false;
@@ -455,11 +473,50 @@ function sceneLabel(order) {
   return "Picture of " + parts.join(", ");
 }
 
+function toolsTree() {
+  function handle(name, label) {
+    return {
+      tag: "g",
+      attrs: {
+        "data-handle": name,
+        role: "button",
+        tabindex: "0",
+        "aria-label": label,
+        "data-move": "1",
+        "data-focus-id": "pose-" + name,
+      },
+      kids: [
+        { tag: "rect", attrs: { width: "44", height: "44", rx: "6" } },
+        {
+          tag: "text",
+          attrs: { x: "22", y: "28", "text-anchor": "middle", "font-size": "12", "pointer-events": "none" },
+          text: label,
+        },
+      ],
+    };
+  }
+  return {
+    tag: "svg",
+    attrs: { class: "scene-tools", viewBox: "0 0 1 1", role: "group", "aria-label": "Placement" },
+    kids: [
+      { tag: "rect", attrs: { class: "select-box", x: "0", y: "0", width: "1", height: "1" } },
+      handle("size", "Size"),
+      handle("turn", "Turn"),
+    ],
+  };
+}
+
 function sceneNode(plan) {
-  const figure = el("figure", { class: "scene" }, [
-    paint(sceneTree(plan)),
-    el("figcaption", {}, [tx(sceneLabel(plan.order))]),
-  ]);
+  const picture = paint(sceneTree(plan));
+  picture.classList.add("scene-picture");
+  const kids = [picture];
+  if (selected && plan.order.indexOf(selected) !== -1) kids.push(paint(toolsTree()));
+  kids.push(el("figcaption", {}, [tx(sceneLabel(plan.order))]));
+  const figure = el("figure", { class: "scene" }, kids);
+  if (selected) {
+    const layer = figure.querySelector('[data-layer="' + selected + '"]');
+    if (layer) layer.classList.add("is-selected");
+  }
   if (marks) {
     for (let i = 0; i < marks.correct.length; i += 1) {
       const pose = figure.querySelector('[data-pose="' + marks.correct[i] + '"]');
@@ -491,6 +548,7 @@ function rubric(row) {
 
 function currentPlan() {
   const plan = scenePlan(picked, flat.ids);
+  plan.poses = poses;
   if (puzzle && typeof puzzle.backdrop === "string" && puzzle.backdrop) plan.backdrop = puzzle.backdrop;
   const missed = marks ? marks.missed : [];
   const ghosts = ghostIds(missed, showGhosts);
@@ -516,6 +574,11 @@ function toggle(id) {
   const origin = blockNode(id);
   const from = boxOf(adding ? origin : layerNode(id));
   picked = toggleId(picked, id);
+  if (!adding) {
+    delete poses[id];
+    if (selected === id) selected = null;
+    rememberPoses();
+  }
   if (firstPick) promptOpen = false;
   outcome = null;
   resultOpen = false;
@@ -556,6 +619,8 @@ function onCheck() {
   const line = playbackLine(result.status, puzzle.works, lines.notYet);
   if (!line) return;
   outcome = { status: result.status, line };
+  const near = closeness(picked, poses, puzzle.arrange, flat.ids, PLACE);
+  if (near) outcome.near = near;
   resultOpen = true;
   keyOpen = false;
   trayOpen = false;
@@ -833,10 +898,16 @@ function clearPanelExtras() {
   }
 }
 
-function resultKicker(pass, score) {
+function nearLabel(near) {
+  const word = near.band === "exact" ? "Exact" : near.band === "close" ? "Close" : near.band === "near" ? "Near" : "Far";
+  return word + " " + String(near.value);
+}
+
+function resultKicker(pass, score, near) {
   const word = pass ? "Clear" : "Miss";
   const kids = [el("span", { class: "result-word" }, [tx(word)])];
   if (score) kids.push(el("span", { class: "result-fraction" }, [tx(" " + score)]));
+  if (near) kids.push(el("span", { class: "result-near" }, [tx(" " + nearLabel(near))]));
   return el("p", { class: "result-kicker" }, kids);
 }
 
@@ -844,12 +915,22 @@ function syncResult(row, nextLink) {
   if (!outcome || !row) {
     resultPanel.hidden = true;
     resultPanel.className = "result-slot";
+    resultPanel.removeAttribute("data-near");
+    resultPanel.removeAttribute("data-band");
     clearPanelExtras();
     return;
   }
   liveText(resultLive, outcome.line);
   const pass = outcome.status === "pass";
   const score = resultScore(row);
+  const near = outcome.near || null;
+  if (near) {
+    resultPanel.setAttribute("data-near", String(near.value));
+    resultPanel.setAttribute("data-band", near.band);
+  } else {
+    resultPanel.removeAttribute("data-near");
+    resultPanel.removeAttribute("data-band");
+  }
   if (resultHold.parentElement !== resultPanel) resultPanel.insertBefore(resultHold, resultPanel.firstChild);
   resultPanel.className = resultOpen
     ? "result-slot is-open result-card " + (pass ? "is-pass" : "is-miss") + (keyOpen ? " is-key" : "")
@@ -865,7 +946,7 @@ function syncResult(row, nextLink) {
     detail.append(rubric(row));
     if (nextLink) detail.append(nextLink);
   } else detail.hidden = true;
-  resultPanel.append(detail, resultKicker(pass, score), resultKeyButton(), resultToggle(pass, score));
+  resultPanel.append(detail, resultKicker(pass, score, near), resultKeyButton(), resultToggle(pass, score));
 }
 
 function shareNode() {
@@ -1045,13 +1126,275 @@ function render() {
     }
   }
   if (keep && !focusShown(keep) && !focusShown(used)) focusShown("tray-toggle");
+  placeTools();
 }
 
 document.addEventListener("visibilitychange", () => {
   document.documentElement.classList.toggle("is-hidden", document.hidden);
 });
 
+function currentPose(id) {
+  if (poses[id]) return poses[id];
+  const place = PLACE[id];
+  if (!place) return null;
+  return restPose(place);
+}
+
+function rememberPoses() {
+  if (!activeSave || !puzzle || gate || practicing()) return;
+  activeSave.setPosed(pageId, poses);
+}
+
+function commitPose(id) {
+  const place = PLACE[id];
+  if (place && poses[id] && samePose(poses[id], restPose(place))) delete poses[id];
+  rememberPoses();
+}
+
+function placeTools() {
+  const scene = document.querySelector(".scene");
+  const tools = document.querySelector(".scene-tools");
+  const piece = selected ? document.querySelector('.scene [data-layer="' + selected + '"]') : null;
+  if (!scene || !tools || !piece) return;
+  const host = scene.getBoundingClientRect();
+  const w = Math.round(host.width);
+  const h = Math.round(host.height);
+  if (!(w > 1) || !(h > 1)) return;
+  tools.setAttribute("viewBox", "0 0 " + String(w) + " " + String(h));
+  const box = piece.getBoundingClientRect();
+  const left = box.left - host.left;
+  const top = box.top - host.top;
+  const frame = tools.querySelector(".select-box");
+  if (frame) {
+    frame.setAttribute("x", String(Math.round(left)));
+    frame.setAttribute("y", String(Math.round(top)));
+    frame.setAttribute("width", String(Math.max(1, Math.round(box.width))));
+    frame.setAttribute("height", String(Math.max(1, Math.round(box.height))));
+  }
+  function moveHandle(node, x, y) {
+    if (!node) return;
+    let px = Math.round(x);
+    let py = Math.round(y);
+    if (px < 0) px = 0;
+    if (py < 0) py = 0;
+    if (px > w - 44) px = Math.max(0, w - 44);
+    if (py > h - 44) py = Math.max(0, h - 44);
+    node.setAttribute("transform", "translate(" + String(px) + " " + String(py) + ")");
+  }
+  moveHandle(tools.querySelector('[data-handle="turn"]'), w - 96, 4);
+  moveHandle(tools.querySelector('[data-handle="size"]'), w - 48, 4);
+}
+
+function paintPose(id) {
+  const layer = document.querySelector('.scene [data-layer="' + id + '"]');
+  if (!layer || !poses[id]) return;
+  layer.setAttribute("transform", poseTransform(poses[id]));
+  placeTools();
+}
+
+function pictureSvg() {
+  return document.querySelector(".scene-picture");
+}
+
+function sceneFromClient(svg, clientX, clientY) {
+  if (!svg || !svg.createSVGPoint || !svg.getScreenCTM) return null;
+  const pt = svg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return null;
+  const local = pt.matrixTransform(ctm.inverse());
+  if (!Number.isFinite(local.x) || !Number.isFinite(local.y)) return null;
+  return { x: Math.round(local.x * 10), y: Math.round(local.y * 10) };
+}
+
+let poseGesture = null;
+let poseBackground = null;
+const posePointers = Object.create(null);
+let poseShow = 0;
+
+function showPose() {
+  poseShow += 1;
+  const token = poseShow;
+  window.setTimeout(() => {
+    if (token !== poseShow) return;
+    render();
+  }, 0);
+}
+
+function poseLayerId(target) {
+  if (!target || !target.closest) return null;
+  const layer = target.closest(".scene [data-layer]");
+  if (!layer) return null;
+  return layer.getAttribute("data-layer");
+}
+
 bindInput();
+
+document.addEventListener("keydown", (event) => {
+  const node = document.activeElement;
+  const kind = node && node.getAttribute && node.getAttribute("data-handle");
+  if (!kind || !selected || picked.indexOf(selected) === -1) return;
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    const pose = currentPose(selected);
+    if (!pose) return;
+    poses[selected] = kind === "size" ? bumpScale(pose) : bumpTurn(pose);
+    commitPose(selected);
+    render();
+    return;
+  }
+  let dx = 0;
+  let dy = 0;
+  if (event.key === "ArrowLeft") dx = -10;
+  else if (event.key === "ArrowRight") dx = 10;
+  else if (event.key === "ArrowUp") dy = -10;
+  else if (event.key === "ArrowDown") dy = 10;
+  else return;
+  event.preventDefault();
+  event.stopPropagation();
+  const pose = currentPose(selected);
+  if (!pose) return;
+  poses[selected] = panPose(pose, dx, dy);
+  commitPose(selected);
+  render();
+}, true);
+
+document.addEventListener("pointerdown", (event) => {
+  if (event.button != null && event.button !== 0) return;
+  const target = event.target;
+  if (!target || !target.closest) return;
+  if (!target.closest(".scene")) return;
+  const svg = pictureSvg();
+  const point = sceneFromClient(svg, event.clientX, event.clientY);
+  if (poseGesture && point) {
+    posePointers[event.pointerId] = point;
+    const ids = Object.keys(posePointers);
+    if (ids.length >= 2) {
+      const origin = currentPose(poseGesture.id) || poseGesture.origin;
+      const startDist = span(posePointers[ids[0]], posePointers[ids[1]]);
+      poseGesture = {
+        kind: "pinch",
+        id: poseGesture.id,
+        origin,
+        start: point,
+        startClient: { x: event.clientX, y: event.clientY },
+        startDist: startDist < 40 ? 40 : startDist,
+        startAngle: 0,
+        moved: true,
+      };
+    }
+    return;
+  }
+  const handle = target.closest("[data-handle]");
+  const id = handle ? selected : poseLayerId(target);
+  if (!id || picked.indexOf(id) === -1 || arriving[id] || !point) {
+    if (!handle && selected) poseBackground = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    return;
+  }
+  const origin = currentPose(id);
+  if (!origin) return;
+  posePointers[event.pointerId] = point;
+  const kind = handle ? handle.getAttribute("data-handle") : "move";
+  const startDist = span(point, origin);
+  poseGesture = {
+    kind,
+    id,
+    origin,
+    start: point,
+    startClient: { x: event.clientX, y: event.clientY },
+    startDist: startDist < 40 ? 40 : startDist,
+    startAngle: degrees(origin.x, origin.y, point.x, point.y),
+    moved: false,
+  };
+  if (selected !== id) {
+    selected = id;
+    const tools = document.querySelector(".scene-tools");
+    if (tools) tools.remove();
+  }
+  const cap = target.setPointerCapture ? target : svg;
+  if (cap && cap.setPointerCapture) {
+    try {
+      cap.setPointerCapture(event.pointerId);
+    } catch {
+      /* capture is optional */
+    }
+  }
+});
+
+document.addEventListener("pointermove", (event) => {
+  if (!poseGesture || !posePointers[event.pointerId]) return;
+  const svg = pictureSvg();
+  const point = sceneFromClient(svg, event.clientX, event.clientY);
+  if (!point) return;
+  posePointers[event.pointerId] = point;
+  const gesture = poseGesture;
+  const dx = event.clientX - gesture.startClient.x;
+  const dy = event.clientY - gesture.startClient.y;
+  if (dx * dx + dy * dy >= 64) gesture.moved = true;
+  if (!gesture.moved) return;
+  let next = gesture.origin;
+  if (gesture.kind === "move") {
+    next = panPose(gesture.origin, point.x - gesture.start.x, point.y - gesture.start.y);
+  } else if (gesture.kind === "size" || gesture.kind === "pinch") {
+    const ids = Object.keys(posePointers);
+    const dist = gesture.kind === "pinch" && ids.length >= 2 ? span(posePointers[ids[0]], posePointers[ids[1]]) : span(point, gesture.origin);
+    next = scalePose(gesture.origin, gesture.startDist, dist);
+  } else if (gesture.kind === "turn") {
+    next = turnPose(gesture.origin, gesture.startAngle, degrees(gesture.origin.x, gesture.origin.y, point.x, point.y));
+  }
+  poses[gesture.id] = next;
+  paintPose(gesture.id);
+  if (event.cancelable) event.preventDefault();
+}, { passive: false });
+
+function clearPosePointers() {
+  const names = Object.keys(posePointers);
+  for (let i = 0; i < names.length; i += 1) delete posePointers[names[i]];
+}
+
+function endPoseGesture(event) {
+  if (poseBackground && poseBackground.id === event.pointerId) {
+    const dx = event.clientX - poseBackground.x;
+    const dy = event.clientY - poseBackground.y;
+    poseBackground = null;
+    if (dx * dx + dy * dy < 64 && !poseGesture && selected) {
+      selected = null;
+      showPose();
+    }
+    return;
+  }
+  delete posePointers[event.pointerId];
+  if (!poseGesture) return;
+  clearPosePointers();
+  const gesture = poseGesture;
+  poseGesture = null;
+  if (gesture.moved) commitPose(gesture.id);
+  else if (gesture.kind === "size") {
+    poses[gesture.id] = bumpScale(gesture.origin);
+    commitPose(gesture.id);
+  } else if (gesture.kind === "turn") {
+    poses[gesture.id] = bumpTurn(gesture.origin);
+    commitPose(gesture.id);
+  }
+  selected = gesture.id;
+  showPose();
+}
+
+document.addEventListener("pointerup", endPoseGesture);
+document.addEventListener("pointercancel", (event) => {
+  if (poseBackground && poseBackground.id === event.pointerId) poseBackground = null;
+  delete posePointers[event.pointerId];
+  if (!poseGesture) return;
+  clearPosePointers();
+  const gesture = poseGesture;
+  poseGesture = null;
+  if (gesture.moved) commitPose(gesture.id);
+});
+
+window.addEventListener("resize", () => {
+  placeTools();
+});
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && trayOpen) {
@@ -1098,6 +1441,7 @@ document.addEventListener("click", (event) => {
   if (!target || !target.closest) return;
   if (target.closest(".result-card")) return;
   if (target.closest(".result-badge")) return;
+  if (target.closest("[data-handle]")) return;
   if (target.closest("button, a, input, textarea, select, label")) return;
   if (target.closest(".scene")) dismissResult();
 });

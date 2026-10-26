@@ -1,6 +1,6 @@
 // Picture templates for the tray and the live scene. No clock, no score.
 
-const SCALE = "0.7";
+import { poseTransform, restPose } from "./arrange.js";
 
 function stroke(d) {
   return {
@@ -381,18 +381,19 @@ export function glyphTree(id) {
   };
 }
 
-function placed(id, attrs) {
+function placed(id, attrs, pose) {
   const place = PLACE[id];
   if (!place || !GLYPHS[id]) return null;
-  const next = {
-    transform: "translate(" + String(place[0]) + " " + String(place[1]) + ") scale(" + SCALE + ")",
-  };
+  const next = { transform: poseTransform(pose || restPose(place)) };
   const keys = Object.keys(attrs);
   for (let i = 0; i < keys.length; i += 1) next[keys[i]] = attrs[keys[i]];
   return {
     tag: "g",
     attrs: next,
-    kids: [{ tag: "g", attrs: { "data-pose": id }, kids: GLYPHS[id] }],
+    kids: [
+      { tag: "rect", attrs: { x: "0", y: "0", width: "32", height: "32", fill: "transparent", "pointer-events": "all" } },
+      { tag: "g", attrs: { "data-pose": id }, kids: GLYPHS[id] },
+    ],
   };
 }
 
@@ -500,7 +501,8 @@ export function sceneTree(plan) {
   const seen = Object.create(null);
   for (let i = 0; i < plan.order.length; i += 1) {
     const id = plan.order[i];
-    const layer = placed(id, { "data-layer": id });
+    const pose = plan.poses && Object.hasOwn(plan.poses, id) ? plan.poses[id] : null;
+    const layer = placed(id, { "data-layer": id }, pose);
     if (!layer) continue;
     seen[id] = true;
     layers.push(layer);

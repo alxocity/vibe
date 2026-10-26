@@ -273,6 +273,42 @@ input:focus,
   min-height: 50dvh;
   margin: 0;
   overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+.scene-tools {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+  pointer-events: none;
+  color: var(--ink);
+}
+.chamber.is-play .scene svg.scene-tools {
+  border: 0;
+  background: transparent;
+}
+.scene-tools [data-handle] { pointer-events: auto; }
+.scene-tools [data-handle] rect {
+  fill: var(--card);
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+.scene-tools text {
+  fill: currentColor;
+  font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
+}
+.scene-tools .select-box {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
 }
 .chamber.is-play .scene svg {
   width: 100%;
@@ -1649,10 +1685,11 @@ html.is-badge .result-slot {
 .scene [data-pose].is-held { opacity: 0; }
 .scene [data-pose].is-correct { filter: drop-shadow(0 0 2px var(--swatch-gold)); }
 .scene [data-pose].is-wrong { opacity: 0.4; }
-.scene [data-ghost] { opacity: 0.55; }
+.scene [data-ghost] { opacity: 0.55; pointer-events: none; }
 .scene [data-ghost] * {
   fill: none;
   stroke: currentColor;
+  pointer-events: none;
   stroke-width: 2;
   stroke-dasharray: 2 2;
 }
@@ -1988,6 +2025,10 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
     outline-offset: 2px;
   }
   .scene [data-ghost] { opacity: 1; }
+  .scene svg.scene-tools { background: transparent; border: 0; }
+  .scene-tools [data-handle] rect { fill: ButtonFace; stroke: ButtonText; }
+  .scene-tools text { fill: ButtonText; }
+  .scene-tools .select-box { stroke: Highlight; }
   .result-card,
   .result-badge,
   .result-close,
