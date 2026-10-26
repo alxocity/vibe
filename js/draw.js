@@ -499,14 +499,19 @@ export function sceneTree(plan) {
     ambient.dust,
   ];
   const seen = Object.create(null);
+  const pieces = [];
   for (let i = 0; i < plan.order.length; i += 1) {
     const id = plan.order[i];
     const pose = plan.poses && Object.hasOwn(plan.poses, id) ? plan.poses[id] : null;
     const layer = placed(id, { "data-layer": id }, pose);
     if (!layer) continue;
     seen[id] = true;
-    layers.push(layer);
+    let z = 0;
+    if (pose && Number.isInteger(pose.z)) z = pose.z;
+    pieces.push({ layer, z, index: i });
   }
+  pieces.sort((a, b) => (a.z === b.z ? a.index - b.index : a.z - b.z));
+  for (let i = 0; i < pieces.length; i += 1) layers.push(pieces[i].layer);
   const ghosts = plan.ghosts || [];
   for (let i = 0; i < ghosts.length; i += 1) {
     const id = ghosts[i];

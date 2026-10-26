@@ -2,7 +2,9 @@
 // Defaults, pending Alex:
 // - Free placement. Stored in tenths of a scene unit (viewBox 200 by 120). No drawn grid.
 // - Scale is a percent of 1. Rest is 70, which is the old 0.7 glyph scale. Limits are 40 and 180.
-// - Turn is integer degrees. A tap steps 15. Scale tap steps 10, and stops at 180.
+// - Turn is integer degrees. Plus and minus each step 15. Scale plus and minus each step 10.
+// - Layer is an integer. Rest is 0. Plus and minus each step 1, and stop at -30 and 30.
+//   A higher layer paints later, so it sits above a lower one. Equal layers keep tray order.
 // - Closeness is 0 through 100 when puzzle.arrange names poses. It does not change Clear or Miss.
 // - Weights: objects 40, position 20, scale 20, turn 20.
 // - Position falls off by 80 scene units, scale by 60 points, turn by 45 degrees.
@@ -14,6 +16,10 @@ export const SCALE_MIN = 40;
 export const SCALE_MAX = 180;
 export const SCALE_STEP = 10;
 export const TURN_STEP = 15;
+export const LAYER_MIN = -30;
+export const LAYER_MAX = 30;
+export const LAYER_STEP = 1;
+export const REST_LAYER = 0;
 export const REST_SCALE = 70;
 export const PLACE_ZERO = 800;
 export const SCALE_ZERO = 60;
@@ -46,6 +52,7 @@ export function clampPose(pose) {
     y: clampInt(src.y, 0, SCENE_H, 0),
     s: clampInt(src.s, SCALE_MIN, SCALE_MAX, REST_SCALE),
     r: normTurn(src.r),
+    z: clampInt(src.z, LAYER_MIN, LAYER_MAX, REST_LAYER),
   };
 }
 
@@ -55,15 +62,20 @@ export function cleanPose(pose) {
   if (!Number.isInteger(pose.y) || pose.y < 0 || pose.y > SCENE_H) return null;
   if (!Number.isInteger(pose.s) || pose.s < SCALE_MIN || pose.s > SCALE_MAX) return null;
   if (!Number.isInteger(pose.r) || pose.r < 0 || pose.r > 359) return null;
-  return { x: pose.x, y: pose.y, s: pose.s, r: pose.r };
+  let z = REST_LAYER;
+  if (pose.z != null) {
+    if (!Number.isInteger(pose.z) || pose.z < LAYER_MIN || pose.z > LAYER_MAX) return null;
+    z = pose.z;
+  }
+  return { x: pose.x, y: pose.y, s: pose.s, r: pose.r, z };
 }
 
 export function restPose(place) {
-  return { x: place[0] * 10 + 112, y: place[1] * 10 + 112, s: REST_SCALE, r: 0 };
+  return { x: place[0] * 10 + 112, y: place[1] * 10 + 112, s: REST_SCALE, r: 0, z: REST_LAYER };
 }
 
 export function samePose(a, b) {
-  return !!a && !!b && a.x === b.x && a.y === b.y && a.s === b.s && a.r === b.r;
+  return !!a && !!b && a.x === b.x && a.y === b.y && a.s === b.s && a.r === b.r && a.z === b.z;
 }
 
 function tenth(n) {
@@ -101,7 +113,7 @@ export function poseTransform(pose) {
 }
 
 export function panPose(origin, dx, dy) {
-  return clampPose({ x: origin.x + dx, y: origin.y + dy, s: origin.s, r: origin.r });
+  return clampPose({ x: origin.x + dx, y: origin.y + dy, s: origin.s, r: origin.r, z: origin.z });
 }
 
 export function scalePose(origin, startDist, dist) {
@@ -111,6 +123,7 @@ export function scalePose(origin, startDist, dist) {
     y: origin.y,
     s: (origin.s * dist) / startDist,
     r: origin.r,
+    z: origin.z,
   });
 }
 
@@ -120,16 +133,24 @@ export function turnPose(origin, startAngle, angle) {
     y: origin.y,
     s: origin.s,
     r: origin.r + (angle - startAngle),
+    z: origin.z,
   });
 }
 
-export function bumpScale(pose) {
-  const next = pose.s + SCALE_STEP;
-  return clampPose({ x: pose.x, y: pose.y, s: next > SCALE_MAX ? SCALE_MAX : next, r: pose.r });
+export function bumpScale(pose, dir) {
+  const step = dir < 0 ? -SCALE_STEP : SCALE_STEP;
+  return clampPose({ x: pose.x, y: pose.y, s: pose.s + step, r: pose.r, z: pose.z });
 }
 
-export function bumpTurn(pose) {
-  return clampPose({ x: pose.x, y: pose.y, s: pose.s, r: pose.r + TURN_STEP });
+export function bumpTurn(pose, dir) {
+  const step = dir < 0 ? -TURN_STEP : TURN_STEP;
+  return clampPose({ x: pose.x, y: pose.y, s: pose.s, r: pose.r + step, z: pose.z });
+}
+
+export function bumpLayer(pose, dir) {
+  const step = dir < 0 ? -LAYER_STEP : LAYER_STEP;
+  const base = pose && Number.isInteger(pose.z) ? pose.z : REST_LAYER;
+  return clampPose({ x: pose.x, y: pose.y, s: pose.s, r: pose.r, z: base + step });
 }
 
 export function span(a, b) {

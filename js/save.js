@@ -183,7 +183,7 @@ export function openSave(backend, kind, nowMs, trayIds) {
       const names = Object.keys(map);
       for (let i = 0; i < names.length; i += 1) {
         const pose = map[names[i]];
-        copy[names[i]] = { x: pose.x, y: pose.y, s: pose.s, r: pose.r };
+        copy[names[i]] = { x: pose.x, y: pose.y, s: pose.s, r: pose.r, z: Number.isInteger(pose.z) ? pose.z : 0 };
       }
       return copy;
     },

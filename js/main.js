@@ -1,4 +1,5 @@
 import {
+  bumpLayer,
   bumpScale,
   bumpTurn,
   closeness,
@@ -474,7 +475,7 @@ function sceneLabel(order) {
 }
 
 function toolsTree() {
-  function handle(name, label) {
+  function handle(name, caption, sign, label) {
     return {
       tag: "g",
       attrs: {
@@ -489,8 +490,13 @@ function toolsTree() {
         { tag: "rect", attrs: { width: "44", height: "44", rx: "6" } },
         {
           tag: "text",
-          attrs: { x: "22", y: "28", "text-anchor": "middle", "font-size": "12", "pointer-events": "none" },
-          text: label,
+          attrs: { x: "22", y: "16", "text-anchor": "middle", "font-size": "11", "pointer-events": "none" },
+          text: caption,
+        },
+        {
+          tag: "text",
+          attrs: { x: "22", y: "36", "text-anchor": "middle", "font-size": "18", "pointer-events": "none" },
+          text: sign,
         },
       ],
     };
@@ -500,8 +506,12 @@ function toolsTree() {
     attrs: { class: "scene-tools", viewBox: "0 0 1 1", role: "group", "aria-label": "Placement" },
     kids: [
       { tag: "rect", attrs: { class: "select-box", x: "0", y: "0", width: "1", height: "1" } },
-      handle("size", "Size"),
-      handle("turn", "Turn"),
+      handle("size-down", "Size", "−", "Smaller"),
+      handle("size-up", "Size", "+", "Larger"),
+      handle("turn-down", "Turn", "−", "Turn left"),
+      handle("turn-up", "Turn", "+", "Turn right"),
+      handle("layer-down", "Z", "−", "Send back"),
+      handle("layer-up", "Z", "+", "Bring forward"),
     ],
   };
 }
@@ -1133,6 +1143,16 @@ document.addEventListener("visibilitychange", () => {
   document.documentElement.classList.toggle("is-hidden", document.hidden);
 });
 
+function handleDir(kind) {
+  return kind.indexOf("-down") === -1 ? 1 : -1;
+}
+
+function bumpNamed(kind, pose) {
+  if (kind.indexOf("size") === 0) return bumpScale(pose, handleDir(kind));
+  if (kind.indexOf("layer") === 0) return bumpLayer(pose, handleDir(kind));
+  return bumpTurn(pose, handleDir(kind));
+}
+
 function currentPose(id) {
   if (poses[id]) return poses[id];
   const place = PLACE[id];
@@ -1181,8 +1201,14 @@ function placeTools() {
     if (py > h - 44) py = Math.max(0, h - 44);
     node.setAttribute("transform", "translate(" + String(px) + " " + String(py) + ")");
   }
-  moveHandle(tools.querySelector('[data-handle="turn"]'), w - 96, 4);
-  moveHandle(tools.querySelector('[data-handle="size"]'), w - 48, 4);
+  const col = 48;
+  const row = 48;
+  moveHandle(tools.querySelector('[data-handle="size-down"]'), w - 44 - col, 4);
+  moveHandle(tools.querySelector('[data-handle="size-up"]'), w - 44, 4);
+  moveHandle(tools.querySelector('[data-handle="turn-down"]'), w - 44 - col, 4 + row);
+  moveHandle(tools.querySelector('[data-handle="turn-up"]'), w - 44, 4 + row);
+  moveHandle(tools.querySelector('[data-handle="layer-down"]'), w - 44 - col, 4 + row * 2);
+  moveHandle(tools.querySelector('[data-handle="layer-up"]'), w - 44, 4 + row * 2);
 }
 
 function paintPose(id) {
@@ -1239,7 +1265,7 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
     const pose = currentPose(selected);
     if (!pose) return;
-    poses[selected] = kind === "size" ? bumpScale(pose) : bumpTurn(pose);
+    poses[selected] = bumpNamed(kind, pose);
     commitPose(selected);
     render();
     return;
@@ -1336,11 +1362,11 @@ document.addEventListener("pointermove", (event) => {
   let next = gesture.origin;
   if (gesture.kind === "move") {
     next = panPose(gesture.origin, point.x - gesture.start.x, point.y - gesture.start.y);
-  } else if (gesture.kind === "size" || gesture.kind === "pinch") {
+  } else if (gesture.kind.indexOf("size") === 0 || gesture.kind === "pinch") {
     const ids = Object.keys(posePointers);
     const dist = gesture.kind === "pinch" && ids.length >= 2 ? span(posePointers[ids[0]], posePointers[ids[1]]) : span(point, gesture.origin);
     next = scalePose(gesture.origin, gesture.startDist, dist);
-  } else if (gesture.kind === "turn") {
+  } else if (gesture.kind.indexOf("turn") === 0) {
     next = turnPose(gesture.origin, gesture.startAngle, degrees(gesture.origin.x, gesture.origin.y, point.x, point.y));
   }
   poses[gesture.id] = next;
@@ -1370,11 +1396,8 @@ function endPoseGesture(event) {
   const gesture = poseGesture;
   poseGesture = null;
   if (gesture.moved) commitPose(gesture.id);
-  else if (gesture.kind === "size") {
-    poses[gesture.id] = bumpScale(gesture.origin);
-    commitPose(gesture.id);
-  } else if (gesture.kind === "turn") {
-    poses[gesture.id] = bumpTurn(gesture.origin);
+  else if (gesture.kind !== "move" && gesture.kind !== "pinch") {
+    poses[gesture.id] = bumpNamed(gesture.kind, gesture.origin);
     commitPose(gesture.id);
   }
   selected = gesture.id;
