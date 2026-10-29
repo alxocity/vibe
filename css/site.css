@@ -1363,31 +1363,35 @@ html.is-badge .result-slot {
   .play.is-open .bag-icon { display: none; }
   .play.is-open .bag {
     grid-column: 1;
-    flex-direction: row;
-    justify-content: center;
-    width: auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
     min-width: 44px;
-    padding: 0 0.15rem;
+    padding: 0.12rem 0.1rem 0.85rem;
   }
+  .play.is-open .bag-label { line-height: 1; }
   .play.is-open .bag-wrap .picked {
     position: absolute;
     grid-column: auto;
     left: 0;
-    right: auto;
+    right: 0;
     top: auto;
-    bottom: calc(100% + 0.15rem);
+    bottom: 0.08rem;
     display: block;
-    width: max-content;
-    min-width: max-content;
-    max-width: none;
+    width: auto;
+    min-width: 0;
+    max-width: 100%;
     height: auto;
     margin: 0;
-    line-height: 1.15;
-    overflow: visible;
+    font-size: 0.62rem;
+    line-height: 1;
+    overflow: hidden;
     white-space: nowrap;
-    text-overflow: clip;
+    text-overflow: ellipsis;
+    text-align: center;
     clip: auto;
-    z-index: 5;
+    z-index: auto;
     pointer-events: none;
   }
   .bag { height: 44px; max-height: 44px; }
@@ -1609,7 +1613,9 @@ html.is-badge .result-slot {
     pointer-events: none;
   }
   html.is-key #result-panel.is-open.is-key {
-    bottom: min(var(--action-row), calc(var(--action-row) / 1rem * 16px + 1.5rem));
+    /* 96px is the action row at a 16px root. The 1.5rem still grows with the text size. */
+    bottom: var(--action-row);
+    bottom: min(var(--action-row), calc(96px + 1.5rem));
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: auto auto;
   }
@@ -1771,6 +1777,8 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
     min-width: 0;
     flex-wrap: wrap;
     align-items: stretch;
+    padding-right: 0.45rem;
+    padding-left: 0.25rem;
   }
   .play.is-open .dialogue {
     flex: 1 1 auto;
@@ -1848,21 +1856,40 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
   }
 }
 @media (orientation: landscape) and (min-width: 360px) and (max-height: 420px) {
+  /* Sizes stay in rem so they follow the root font. The plain 4rem is the
+     fallback when a WebView drops min() or max(). */
   html {
     --action-control: 44px;
-    --action-margin-top: calc(0.5rem / 1rem * 16px);
-    --action-margin-bottom: calc(0.15rem / 1rem * 16px);
+    --action-margin-top: 0.5rem;
+    --action-margin-bottom: 0.15rem;
     --action-row: calc(var(--action-control) + var(--action-margin-top) + var(--action-margin-bottom));
-    --key-band: min(calc(var(--key-slot) / 1rem * 16px), calc(100vh - var(--action-row) - 156px));
-    --key-band: min(calc(var(--key-slot) / 1rem * 16px), calc(100dvh - var(--action-row) - 156px));
+    --key-band: 4rem;
+    --key-band: min(var(--key-slot), max(4rem, calc(100vh - var(--action-row) - 9.75rem)));
+    --key-band: min(var(--key-slot), max(4rem, calc(100dvh - var(--action-row) - 9.75rem)));
   }
-  .play.is-open .stage {
-    grid-template-rows: auto minmax(40px, 1fr) auto auto auto;
+  .chamber.is-play .stage {
+    grid-template-rows: auto minmax(24px, 1fr) auto auto auto;
   }
-  .hud { gap: calc(0.15rem / 1rem * 16px); }
+  .chamber.is-play .scene { min-height: 24px; }
+  .play.is-open .hud {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  .play.is-open .hud-bar {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .play.is-open .dialogue {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .play.is-open .prompt-toggle { margin-left: 0.35rem; }
+  .hud { gap: 0.15rem; }
   .chamber.is-play h2 {
-    font-size: calc(0.95rem / 1rem * 16px);
-    padding: calc(0.15rem / 1rem * 16px) calc(0.45rem / 1rem * 16px);
+    font-size: 0.95rem;
+    padding: 0.15rem 0.45rem;
   }
   .chamber.is-play > .link,
   .menu-toggle,
@@ -1900,14 +1927,14 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
     height: 44px;
     min-height: 44px;
     max-height: 44px;
-    font-size: calc(0.72rem / 1rem * 16px);
+    font-size: 0.72rem;
   }
   .result-close {
     width: 44px;
     min-width: 44px;
     max-width: 44px;
   }
-  .result-key { padding: calc(0.15rem / 1rem * 16px) calc(0.4rem / 1rem * 16px); }
+  .result-key { padding: 0.15rem 0.4rem; }
   .hud-actions {
     align-items: center;
     margin-top: var(--action-margin-top);
@@ -1940,42 +1967,47 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
   html.is-bag.is-badge .result-slot,
   html.is-bag .result-slot.is-open,
   html.is-bag #result-panel.is-open.is-key {
-    bottom: calc(var(--action-row) + 0.1rem / 1rem * 16px);
+    bottom: calc(var(--action-row) + 0.1rem);
   }
   #result-panel.is-open.is-key,
   html.is-bag #result-panel.is-open.is-key {
     top: auto;
-    height: calc(var(--key-band) - 0.5rem / 1rem * 16px);
-    max-height: calc(var(--key-band) - 0.5rem / 1rem * 16px);
+    height: calc(var(--key-band) - 0.5rem);
+    max-height: calc(var(--key-band) - 0.5rem);
     overflow: hidden;
   }
   html.is-key .result-gap { height: var(--key-band); }
   html.is-key #result-panel.is-open.is-key {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    grid-template-rows: auto;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) 44px;
   }
   html.is-key .result-slot.is-open.is-key .result-detail {
-    grid-column: 1;
+    grid-column: 1 / -1;
     grid-row: 1;
     overflow: hidden;
+    padding: 0.15rem 0.35rem;
   }
   html.is-key .result-card.is-key .rubric {
     display: block;
     margin: 0;
-    font-size: calc(0.62rem / 1rem * 16px);
-    line-height: 1.15;
+    overflow: hidden;
+    font-size: 0.62rem;
+    line-height: 1.05;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   html.is-key .result-card.is-key .rubric dt,
   html.is-key .result-card.is-key .rubric dd { display: inline; }
   html.is-key .result-card.is-key .rubric dd::after { content: " "; }
   html.is-key .result-slot.is-open.is-key .result-key {
-    grid-column: 2;
-    grid-row: 1;
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: start;
     align-self: center;
   }
   html.is-key .result-slot.is-open.is-key .result-badge {
-    grid-column: 3;
-    grid-row: 1;
+    grid-column: 2;
+    grid-row: 2;
     align-self: center;
   }
   html.is-key .result-slot.is-open.is-key .result-kicker,
