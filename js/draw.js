@@ -1,6 +1,6 @@
 // Picture templates for the tray and the live scene. No clock, no score.
 
-import { poseTransform, restPose } from "./arrange.js";
+import { pieceColor, poseTransform, restPose, washOpacity } from "./arrange.js";
 
 function stroke(d) {
   return {
@@ -381,20 +381,33 @@ export function glyphTree(id) {
   };
 }
 
+function wash(id, pose) {
+  return {
+    tag: "circle",
+    attrs: {
+      "data-wash": id,
+      cx: "16",
+      cy: "16",
+      r: "13",
+      fill: pieceColor(pose && pose.c),
+      "fill-opacity": washOpacity(pose && pose.a),
+    },
+  };
+}
+
 function placed(id, attrs, pose) {
   const place = PLACE[id];
   if (!place || !GLYPHS[id]) return null;
-  const next = { transform: poseTransform(pose || restPose(place)) };
+  const at = pose || restPose(place);
+  const next = { transform: poseTransform(at) };
   const keys = Object.keys(attrs);
   for (let i = 0; i < keys.length; i += 1) next[keys[i]] = attrs[keys[i]];
-  return {
-    tag: "g",
-    attrs: next,
-    kids: [
-      { tag: "rect", attrs: { x: "0", y: "0", width: "32", height: "32", fill: "transparent", "pointer-events": "all" } },
-      { tag: "g", attrs: { "data-pose": id }, kids: GLYPHS[id] },
-    ],
-  };
+  const kids = [
+    { tag: "rect", attrs: { x: "0", y: "0", width: "32", height: "32", fill: "transparent", "pointer-events": "all" } },
+  ];
+  if (!attrs["data-ghost"]) kids.push(wash(id, at));
+  kids.push({ tag: "g", attrs: { "data-pose": id }, kids: GLYPHS[id] });
+  return { tag: "g", attrs: next, kids };
 }
 
 function ambientDust() {

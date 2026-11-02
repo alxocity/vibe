@@ -5,6 +5,9 @@
 // - Turn is integer degrees. Plus and minus each step 15. Scale plus and minus each step 10.
 // - Layer is an integer. Rest is 0. Plus and minus each step 1, and stop at -30 and 30.
 //   A higher layer paints later, so it sits above a lower one. Equal layers keep tray order.
+// - Color is a palette index. Rest is 0, the ink color. Plus and minus wrap the palette.
+// - Transparency is an integer 20 through 100. Rest is 100. Plus and minus step 20.
+//   The wash under the strokes uses that alpha. Closeness does not score color or alpha.
 // - Closeness is 0 through 100 when puzzle.arrange names poses. It does not change Clear or Miss.
 // - Weights: objects 40, position 20, scale 20, turn 20.
 // - Position falls off by 80 scene units, scale by 60 points, turn by 45 degrees.
@@ -20,10 +23,18 @@ export const LAYER_MIN = -30;
 export const LAYER_MAX = 30;
 export const LAYER_STEP = 1;
 export const REST_LAYER = 0;
+export const COLOR_COUNT = 8;
+export const REST_COLOR = 0;
+export const ALPHA_MIN = 20;
+export const ALPHA_MAX = 100;
+export const ALPHA_STEP = 20;
+export const REST_ALPHA = 100;
 export const REST_SCALE = 70;
 export const PLACE_ZERO = 800;
 export const SCALE_ZERO = 60;
 export const TURN_ZERO = 45;
+
+const PALETTE = ["currentColor", "#c23b2e", "#1f5f99", "#2f6b45", "#b86a12", "#6a3d8f", "#c47a4a", "#3d6b6b"];
 
 const WEIGHT_OBJECTS = 40;
 const WEIGHT_PLACE = 20;
@@ -53,7 +64,22 @@ export function clampPose(pose) {
     s: clampInt(src.s, SCALE_MIN, SCALE_MAX, REST_SCALE),
     r: normTurn(src.r),
     z: clampInt(src.z, LAYER_MIN, LAYER_MAX, REST_LAYER),
+    c: clampInt(src.c, 0, COLOR_COUNT - 1, REST_COLOR),
+    a: clampInt(src.a, ALPHA_MIN, ALPHA_MAX, REST_ALPHA),
   };
+}
+
+export function pieceColor(index) {
+  return PALETTE[clampInt(index, 0, COLOR_COUNT - 1, REST_COLOR)];
+}
+
+export function washOpacity(alpha) {
+  const a = clampInt(alpha, ALPHA_MIN, ALPHA_MAX, REST_ALPHA);
+  if (a >= 100) return "0.55";
+  if (a >= 80) return "0.42";
+  if (a >= 60) return "0.3";
+  if (a >= 40) return "0.2";
+  return "0.12";
 }
 
 export function cleanPose(pose) {
@@ -67,15 +93,25 @@ export function cleanPose(pose) {
     if (!Number.isInteger(pose.z) || pose.z < LAYER_MIN || pose.z > LAYER_MAX) return null;
     z = pose.z;
   }
-  return { x: pose.x, y: pose.y, s: pose.s, r: pose.r, z };
+  let c = REST_COLOR;
+  if (pose.c != null) {
+    if (!Number.isInteger(pose.c) || pose.c < 0 || pose.c >= COLOR_COUNT) return null;
+    c = pose.c;
+  }
+  let a = REST_ALPHA;
+  if (pose.a != null) {
+    if (!Number.isInteger(pose.a) || pose.a < ALPHA_MIN || pose.a > ALPHA_MAX || pose.a % ALPHA_STEP !== 0) return null;
+    a = pose.a;
+  }
+  return { x: pose.x, y: pose.y, s: pose.s, r: pose.r, z, c, a };
 }
 
 export function restPose(place) {
-  return { x: place[0] * 10 + 112, y: place[1] * 10 + 112, s: REST_SCALE, r: 0, z: REST_LAYER };
+  return { x: place[0] * 10 + 112, y: place[1] * 10 + 112, s: REST_SCALE, r: 0, z: REST_LAYER, c: REST_COLOR, a: REST_ALPHA };
 }
 
 export function samePose(a, b) {
-  return !!a && !!b && a.x === b.x && a.y === b.y && a.s === b.s && a.r === b.r && a.z === b.z;
+  return !!a && !!b && a.x === b.x && a.y === b.y && a.s === b.s && a.r === b.r && a.z === b.z && a.c === b.c && a.a === b.a;
 }
 
 function tenth(n) {
@@ -112,45 +148,60 @@ export function poseTransform(pose) {
   );
 }
 
-export function panPose(origin, dx, dy) {
-  return clampPose({ x: origin.x + dx, y: origin.y + dy, s: origin.s, r: origin.r, z: origin.z });
-}
-
-export function scalePose(origin, startDist, dist) {
-  if (!(startDist > 0) || !(dist > 0)) return clampPose(origin);
-  return clampPose({
-    x: origin.x,
-    y: origin.y,
-    s: (origin.s * dist) / startDist,
-    r: origin.r,
-    z: origin.z,
-  });
-}
-
-export function turnPose(origin, startAngle, angle) {
+function carry(origin, fields) {
   return clampPose({
     x: origin.x,
     y: origin.y,
     s: origin.s,
-    r: origin.r + (angle - startAngle),
+    r: origin.r,
     z: origin.z,
+    c: origin.c,
+    a: origin.a,
+    ...fields,
   });
+}
+
+export function panPose(origin, dx, dy) {
+  return carry(origin, { x: origin.x + dx, y: origin.y + dy });
+}
+
+export function scalePose(origin, startDist, dist) {
+  if (!(startDist > 0) || !(dist > 0)) return clampPose(origin);
+  return carry(origin, { s: (origin.s * dist) / startDist });
+}
+
+export function turnPose(origin, startAngle, angle) {
+  return carry(origin, { r: origin.r + (angle - startAngle) });
 }
 
 export function bumpScale(pose, dir) {
   const step = dir < 0 ? -SCALE_STEP : SCALE_STEP;
-  return clampPose({ x: pose.x, y: pose.y, s: pose.s + step, r: pose.r, z: pose.z });
+  return carry(pose, { s: pose.s + step });
 }
 
 export function bumpTurn(pose, dir) {
   const step = dir < 0 ? -TURN_STEP : TURN_STEP;
-  return clampPose({ x: pose.x, y: pose.y, s: pose.s, r: pose.r + step, z: pose.z });
+  return carry(pose, { r: pose.r + step });
 }
 
 export function bumpLayer(pose, dir) {
   const step = dir < 0 ? -LAYER_STEP : LAYER_STEP;
   const base = pose && Number.isInteger(pose.z) ? pose.z : REST_LAYER;
-  return clampPose({ x: pose.x, y: pose.y, s: pose.s, r: pose.r, z: base + step });
+  return carry(pose, { z: base + step });
+}
+
+export function bumpColor(pose, dir) {
+  const step = dir < 0 ? -1 : 1;
+  let c = (pose && Number.isInteger(pose.c) ? pose.c : REST_COLOR) + step;
+  c %= COLOR_COUNT;
+  if (c < 0) c += COLOR_COUNT;
+  return carry(pose, { c });
+}
+
+export function bumpAlpha(pose, dir) {
+  const step = dir < 0 ? -ALPHA_STEP : ALPHA_STEP;
+  const base = pose && Number.isInteger(pose.a) ? pose.a : REST_ALPHA;
+  return carry(pose, { a: base + step });
 }
 
 export function span(a, b) {

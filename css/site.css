@@ -2032,6 +2032,7 @@ html.is-hidden .scene [data-ambient] { animation-play-state: paused; }
 @media (forced-colors: active) {
   .scene svg { background: Canvas; border-color: CanvasText; color: CanvasText; }
   .scene [data-layer="room"] * { fill: none; stroke: CanvasText; }
+  .scene [data-wash] { fill: CanvasText; }
   svg [data-swatch] { fill: CanvasText; }
   .tile.is-picked {
     background: Highlight;

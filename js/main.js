@@ -1,4 +1,6 @@
 import {
+  bumpAlpha,
+  bumpColor,
   bumpLayer,
   bumpScale,
   bumpTurn,
@@ -512,6 +514,10 @@ function toolsTree() {
       handle("turn-up", "Turn", "+", "Turn right"),
       handle("layer-down", "Z", "−", "Send back"),
       handle("layer-up", "Z", "+", "Bring forward"),
+      handle("color-down", "Color", "−", "Previous color"),
+      handle("color-up", "Color", "+", "Next color"),
+      handle("fade-down", "Fade", "−", "More transparent"),
+      handle("fade-up", "Fade", "+", "More solid"),
     ],
   };
 }
@@ -1150,6 +1156,8 @@ function handleDir(kind) {
 function bumpNamed(kind, pose) {
   if (kind.indexOf("size") === 0) return bumpScale(pose, handleDir(kind));
   if (kind.indexOf("layer") === 0) return bumpLayer(pose, handleDir(kind));
+  if (kind.indexOf("color") === 0) return bumpColor(pose, handleDir(kind));
+  if (kind.indexOf("fade") === 0) return bumpAlpha(pose, handleDir(kind));
   return bumpTurn(pose, handleDir(kind));
 }
 
@@ -1209,6 +1217,10 @@ function placeTools() {
   moveHandle(tools.querySelector('[data-handle="turn-up"]'), w - 44, 4 + row);
   moveHandle(tools.querySelector('[data-handle="layer-down"]'), w - 44 - col, 4 + row * 2);
   moveHandle(tools.querySelector('[data-handle="layer-up"]'), w - 44, 4 + row * 2);
+  moveHandle(tools.querySelector('[data-handle="color-down"]'), w - 44 - col, 4 + row * 3);
+  moveHandle(tools.querySelector('[data-handle="color-up"]'), w - 44, 4 + row * 3);
+  moveHandle(tools.querySelector('[data-handle="fade-down"]'), w - 44 - col, 4 + row * 4);
+  moveHandle(tools.querySelector('[data-handle="fade-up"]'), w - 44, 4 + row * 4);
 }
 
 function paintPose(id) {
