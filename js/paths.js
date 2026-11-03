@@ -7,6 +7,10 @@ export function soloPath(id) {
   return "/solo/" + pad2(id) + "/";
 }
 
+export function samplePath(id) {
+  return "/sample/" + pad2(id) + "/";
+}
+
 export function echoPath(id) {
   return "/echo/" + pad2(id) + "/";
 }

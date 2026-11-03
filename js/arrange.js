@@ -275,3 +275,128 @@ export function closeness(build, poses, expected, trayIds, places) {
   const capped = value > 100 ? 100 : value;
   return { value: capped, band: nearBand(capped) };
 }
+
+const SAMPLE_WEIGHT = { position: 40, size: 25, turn: 20, layer: 15 };
+
+function checked(list, name) {
+  if (!list) return false;
+  for (let i = 0; i < list.length; i += 1) {
+    if (list[i] === name) return true;
+  }
+  return false;
+}
+
+function normPose(pose) {
+  return {
+    x: pose.x / SCENE_W,
+    y: pose.y / SCENE_H,
+    s: pose.s / REST_SCALE,
+    r: pose.r,
+    z: pose.z,
+  };
+}
+
+function angleDiff(a, b, symmetry) {
+  const period = symmetry > 0 && symmetry < 360 ? symmetry : 360;
+  let d = Math.abs(a - b) % period;
+  if (d > period / 2) d = period - d;
+  return d;
+}
+
+function halfExtent(mult) {
+  const scene = 16 * mult * (REST_SCALE / 100);
+  return { x: scene / (SCENE_W / 10), y: scene / (SCENE_H / 10) };
+}
+
+function boxesOverlap(a, b) {
+  const ha = halfExtent(a.s);
+  const hb = halfExtent(b.s);
+  const dx = Math.abs(a.x - b.x);
+  const dy = Math.abs(a.y - b.y);
+  return dx < ha.x + hb.x && dy < ha.y + hb.y;
+}
+
+function orderMatches(haveA, haveB, wantA, wantB) {
+  if (wantA === wantB) return true;
+  if (haveA === haveB) return false;
+  return haveA - haveB > 0 === wantA - wantB > 0;
+}
+
+export function sampleScore(build, poses, arrange, places) {
+  if (!arrange || arrange.sample !== true || !Array.isArray(arrange.pieces) || arrange.pieces.length === 0) return null;
+  if (!Array.isArray(build) || !places) return null;
+  const checks = arrange.checks;
+  if (!Array.isArray(checks) || checks.length === 0) return null;
+  let weight = 0;
+  if (checked(checks, "position")) weight += SAMPLE_WEIGHT.position;
+  if (checked(checks, "size")) weight += SAMPLE_WEIGHT.size;
+  if (checked(checks, "turn")) weight += SAMPLE_WEIGHT.turn;
+  if (checked(checks, "layer")) weight += SAMPLE_WEIGHT.layer;
+  if (weight === 0) return null;
+  const expected = [];
+  const wantIds = [];
+  for (let i = 0; i < arrange.pieces.length; i += 1) {
+    const piece = arrange.pieces[i];
+    if (!piece || typeof piece.id !== "string" || !places[piece.id]) return null;
+    if (typeof piece.x !== "number" || typeof piece.y !== "number") return null;
+    wantIds.push(piece.id);
+    const stored = poses && Object.hasOwn(poses, piece.id) ? cleanPose(poses[piece.id]) : null;
+    const have = hasId(build, piece.id) ? normPose(stored || restPose(places[piece.id])) : null;
+    expected.push({
+      id: piece.id,
+      want: {
+        x: piece.x,
+        y: piece.y,
+        s: typeof piece.size === "number" ? piece.size : 1,
+        r: typeof piece.turn === "number" ? piece.turn : 0,
+        z: typeof piece.z === "number" ? piece.z : 0,
+      },
+      symmetry: typeof piece.symmetry === "number" ? piece.symmetry : 0,
+      have,
+    });
+  }
+  let total = 0;
+  for (let i = 0; i < expected.length; i += 1) {
+    const row = expected[i];
+    if (!row.have) continue;
+    let part = 0;
+    if (checked(checks, "position")) {
+      const dx = row.have.x - row.want.x;
+      const dy = row.have.y - row.want.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const score = 1 - dist / 0.25;
+      part += SAMPLE_WEIGHT.position * (score > 0 ? score : 0);
+    }
+    if (checked(checks, "size")) {
+      const delta = Math.abs(row.have.s - row.want.s);
+      const score = 1 - delta / 0.5;
+      part += SAMPLE_WEIGHT.size * (score > 0 ? score : 0);
+    }
+    if (checked(checks, "turn")) {
+      const delta = angleDiff(row.have.r, row.want.r, row.symmetry);
+      const score = 1 - delta / 45;
+      part += SAMPLE_WEIGHT.turn * (score > 0 ? score : 0);
+    }
+    if (checked(checks, "layer")) {
+      // Pieces that do not overlap still get full layer credit. Order is only
+      // scored where the boxes actually stack.
+      let ok = true;
+      for (let j = 0; j < expected.length; j += 1) {
+        if (j === i || !expected[j].have) continue;
+        if (!boxesOverlap(row.have, expected[j].have)) continue;
+        if (!orderMatches(row.have.z, expected[j].have.z, row.want.z, expected[j].want.z)) ok = false;
+      }
+      if (ok) part += SAMPLE_WEIGHT.layer;
+    }
+    total += part / weight;
+  }
+  const avg = total / expected.length;
+  let extras = 0;
+  for (let i = 0; i < build.length; i += 1) {
+    if (!hasId(wantIds, build[i])) extras += 1;
+  }
+  let value = Math.round(avg * 100 - extras * 10);
+  if (value < 0) value = 0;
+  if (value > 100) value = 100;
+  return { value, band: "percent" };
+}

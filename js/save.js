@@ -5,6 +5,7 @@ import { soloStamp } from "./progress.js";
 
 export const SOLO_KEY = "vibe-chamber-solo";
 export const DAILY_KEY = "vibe-chamber-daily";
+export const SAMPLE_KEY = "vibe-chamber-sample";
 
 function decimalId(id) {
   return typeof id === "string" && /^(0|[1-9][0-9]*)$/.test(id);
@@ -88,7 +89,7 @@ export function readStored(raw, kind, trayIds, nowMs) {
   if (!picked) return { ok: false };
   const posed = copyPosed(data.posed, trayIds);
   if (!posed) return { ok: false };
-  if (kind === "solo") {
+  if (kind === "solo" || kind === "sample") {
     const cleared = copyIds(data.cleared);
     if (!cleared || !Number.isSafeInteger(data.updatedAt)) return { ok: false };
     const stamp = soloStamp(data.updatedAt, nowMs);
@@ -105,12 +106,12 @@ export function readStored(raw, kind, trayIds, nowMs) {
 }
 
 function blank(kind, nowMs) {
-  if (kind === "solo") return { v: 1, updatedAt: nowMs, cleared: [], picked: Object.create(null), posed: Object.create(null) };
+  if (kind === "solo" || kind === "sample") return { v: 1, updatedAt: nowMs, cleared: [], picked: Object.create(null), posed: Object.create(null) };
   return { v: 1, solved: [], picked: Object.create(null), posed: Object.create(null) };
 }
 
 export function openSave(backend, kind, nowMs, trayIds) {
-  const key = kind === "solo" ? SOLO_KEY : DAILY_KEY;
+  const key = kind === "solo" ? SOLO_KEY : kind === "sample" ? SAMPLE_KEY : DAILY_KEY;
   let warning = false;
   let persistent = true;
   let state = blank(kind, nowMs());
@@ -163,7 +164,7 @@ export function openSave(backend, kind, nowMs, trayIds) {
       return warning;
     },
     doneIds() {
-      const list = kind === "solo" ? state.cleared : state.solved;
+      const list = kind === "solo" || kind === "sample" ? state.cleared : state.solved;
       return list.slice();
     },
     picked(id) {
@@ -213,7 +214,7 @@ export function openSave(backend, kind, nowMs, trayIds) {
     markDone(id) {
       const keyId = String(id);
       if (!decimalId(keyId)) return;
-      const list = kind === "solo" ? state.cleared : state.solved;
+      const list = kind === "solo" || kind === "sample" ? state.cleared : state.solved;
       if (!has(list, keyId)) list.push(keyId);
       touch();
     },

@@ -1,4 +1,4 @@
-import { echoPath, soloPath } from "./paths.js";
+import { echoPath, samplePath, soloPath } from "./paths.js";
 
 export function linksFor(mode, ctx) {
   const links = [];
@@ -13,6 +13,15 @@ export function linksFor(mode, ctx) {
         id: "solo-" + String(item.id),
         href: soloPath(item.id),
         label: String(item.id) + ". " + item.title,
+      });
+    }
+    const samples = ctx.samples || [];
+    for (let i = 0; i < samples.length; i += 1) {
+      const item = samples[i];
+      links.push({
+        id: "sample-" + String(item.id),
+        href: samplePath(item.id),
+        label: "Sample. " + item.title,
       });
     }
     links.push({ id: "playback", href: "/playback/", label: "Playback" });

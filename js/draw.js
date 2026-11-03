@@ -351,8 +351,29 @@ function officeShapes() {
   ];
 }
 
+function gridShapes() {
+  const kids = roomShapes();
+  function rule(x1, y1, x2, y2) {
+    kids.push({
+      tag: "line",
+      attrs: {
+        x1, y1, x2, y2,
+        stroke: "currentColor",
+        "stroke-width": "2",
+        "stroke-opacity": "0.28",
+      },
+    });
+  }
+  rule("67", "8", "67", "112");
+  rule("133", "8", "133", "112");
+  rule("8", "40", "192", "40");
+  rule("8", "80", "192", "80");
+  return kids;
+}
+
 const BACKDROPS = {
   room: roomShapes,
+  grid: gridShapes,
   garden: gardenShapes,
   gate: gateShapes,
   hall: hallShapes,

@@ -1,0 +1,69 @@
+{
+  "items": [
+    {
+      "id": 1,
+      "sample": true,
+      "title": "Tic-Tac-Toe",
+      "situation": "Three in a row, corner to corner.",
+      "required": ["extra", "window", "sword", "circle", "quiet"],
+      "anyOf": [],
+      "forbidden": [],
+      "works": "The sample is set.",
+      "backdrop": "grid",
+      "arrange": {
+        "sample": true,
+        "checks": ["position"],
+        "pieces": [
+          { "id": "extra", "placeholder": "X", "x": 0.1875, "y": 0.2 },
+          { "id": "window", "placeholder": "X", "x": 0.5, "y": 0.5 },
+          { "id": "sword", "placeholder": "X", "x": 0.8125, "y": 0.8 },
+          { "id": "circle", "placeholder": "O", "x": 0.8125, "y": 0.2 },
+          { "id": "quiet", "placeholder": "O", "x": 0.1875, "y": 0.8 }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "sample": true,
+      "title": "Leaning Tower",
+      "situation": "Stack three blocks, biggest on the bottom, the top one tipping over.",
+      "required": ["square", "fridge", "oven"],
+      "anyOf": [],
+      "forbidden": [],
+      "works": "The sample is set.",
+      "backdrop": "room",
+      "arrange": {
+        "sample": true,
+        "checks": ["position", "size", "turn", "layer"],
+        "pieces": [
+          { "id": "square", "placeholder": "block A", "x": 0.5, "y": 0.8, "size": 1.5, "turn": 0, "z": 0, "symmetry": 90 },
+          { "id": "fridge", "placeholder": "block B", "x": 0.5, "y": 0.6, "size": 1, "turn": 0, "z": 1 },
+          { "id": "oven", "placeholder": "block C", "x": 0.55, "y": 0.45, "size": 0.6, "turn": 20, "z": 2 }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "sample": true,
+      "title": "Picnic",
+      "situation": "A picnic under a tree: blanket on the grass, basket on the blanket, sun in the corner.",
+      "required": ["lamp", "map", "mug", "pineapple", "star", "dragon"],
+      "anyOf": [],
+      "forbidden": [],
+      "works": "The sample is set.",
+      "backdrop": "garden",
+      "arrange": {
+        "sample": true,
+        "checks": ["position", "size", "turn", "layer"],
+        "pieces": [
+          { "id": "lamp", "placeholder": "tree", "x": 0.2, "y": 0.45, "size": 1.8, "turn": 0, "z": 0 },
+          { "id": "map", "placeholder": "blanket", "x": 0.6, "y": 0.75, "size": 1.4, "turn": -10, "z": 1 },
+          { "id": "mug", "placeholder": "basket", "x": 0.6, "y": 0.7, "size": 0.7, "turn": 0, "z": 2 },
+          { "id": "pineapple", "placeholder": "apple", "x": 0.7, "y": 0.72, "size": 0.4, "turn": 0, "z": 2 },
+          { "id": "star", "placeholder": "sun", "x": 0.85, "y": 0.15, "size": 1, "turn": 0, "z": 0 },
+          { "id": "dragon", "placeholder": "bird", "x": 0.45, "y": 0.25, "size": 0.5, "turn": 15, "z": 1 }
+        ]
+      }
+    }
+  ]
+}

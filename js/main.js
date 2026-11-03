@@ -5,6 +5,7 @@ import {
   bumpScale,
   bumpTurn,
   closeness,
+  sampleScore,
   degrees,
   panPose,
   poseTransform,
@@ -14,7 +15,7 @@ import {
   span,
   turnPose,
 } from "./arrange.js";
-import { calendar, echoes, lines, playback, solo, tray } from "./catalog.js";
+import { calendar, echoes, lines, playback, samples, solo, tray } from "./catalog.js";
 import { PLACE, glyphTree, scenePlan, sceneTree, shareGlyph } from "./draw.js";
 import { ghostIds, showGhosts } from "./ghosts.js";
 import { el, tx } from "./dom.js";
@@ -57,6 +58,7 @@ function replayRow(today) {
 }
 
 function practicing() {
+  if (mode !== "echo") return false;
   const row = replayRow(todayEcho());
   return row != null && String(row.id) === String(pageId);
 }
@@ -80,11 +82,12 @@ function names(ids) {
 
 const backend = browserBackend(() => window.localStorage);
 const nowMs = () => Date.now();
-const soloSave = mode === "daily" || mode === "echo" || mode === "playback" ? null : openSave(backend, "solo", nowMs, flat.ids);
-const dailySave = mode === "solo" || mode === "playback" ? null : openSave(backend, "daily", nowMs, flat.ids);
+const soloSave = mode === "daily" || mode === "echo" || mode === "playback" || mode === "sample" ? null : openSave(backend, "solo", nowMs, flat.ids);
+const dailySave = mode === "solo" || mode === "playback" || mode === "sample" ? null : openSave(backend, "daily", nowMs, flat.ids);
+const sampleSave = mode === "sample" ? openSave(backend, "sample", nowMs, flat.ids) : null;
 
-const puzzle = mode === "solo" ? rowById(solo.items, pageId) : mode === "echo" ? rowById(echoes.items, pageId) : null;
-const activeSave = mode === "solo" ? soloSave : dailySave;
+const puzzle = mode === "solo" ? rowById(solo.items, pageId) : mode === "sample" ? rowById(samples.items, pageId) : mode === "echo" ? rowById(echoes.items, pageId) : null;
+const activeSave = mode === "solo" ? soloSave : mode === "sample" ? sampleSave : dailySave;
 
 let picked = [];
 let poses = Object.create(null);
@@ -635,13 +638,15 @@ function onCheck() {
   const line = playbackLine(result.status, puzzle.works, lines.notYet);
   if (!line) return;
   outcome = { status: result.status, line };
-  const near = closeness(picked, poses, puzzle.arrange, flat.ids, PLACE);
+  const near = puzzle.arrange && puzzle.arrange.sample === true
+    ? sampleScore(picked, poses, puzzle.arrange, PLACE)
+    : closeness(picked, poses, puzzle.arrange, flat.ids, PLACE);
   if (near) outcome.near = near;
   resultOpen = true;
   keyOpen = false;
   trayOpen = false;
   marks = checkMarks(picked, puzzle);
-  if (result.status === "pass" && !practicing()) activeSave.markDone(pageId);
+  if (result.status === "pass" && !practicing() && mode !== "sample") activeSave.markDone(pageId);
   shakeOnce = result.status !== "pass";
   focusAfter = "outcome";
   render();
@@ -915,6 +920,7 @@ function clearPanelExtras() {
 }
 
 function nearLabel(near) {
+  if (near.band === "percent") return String(near.value) + "%";
   const word = near.band === "exact" ? "Exact" : near.band === "close" ? "Close" : near.band === "near" ? "Near" : "Far";
   return word + " " + String(near.value);
 }
@@ -1016,7 +1022,7 @@ function playShell(row, extras) {
     el("div", { class: "stage" }, [
       el("div", { class: "hud" }, [
         el("div", { class: "hud-bar" }, [
-          el("h2", {}, [tx(practicing() ? "Practice" : mode === "solo" ? row.title : "Echo " + pageId)]),
+          el("h2", {}, [tx(practicing() ? "Practice" : mode === "echo" ? "Echo " + pageId : row.title)]),
           practicing() ? el("p", { class: "practice" }, [tx(lines.practice)]) : null,
         ].filter((node) => node != null)),
         el("div", { class: promptOpen ? "dialogue is-open" : "dialogue" }, [promptButton, situation]),
@@ -1048,7 +1054,11 @@ function view() {
       id: item.id,
       title: cleared.indexOf(String(item.id)) === -1 ? item.title : item.title + ", works",
     }));
-    const links = linksFor("home", { solo: items, todayHref: todayOpen ? echoHref(today) : null });
+    const links = linksFor("home", {
+      solo: items,
+      samples: samples.items,
+      todayHref: todayOpen ? echoHref(today) : null,
+    });
     for (let i = 0; i < links.length; i += 1) nodes.push(linkNode(links[i]));
     nodes.push(copyLink());
   } else if (mode === "daily") {
@@ -1121,7 +1131,7 @@ function render() {
   const nodes = view();
   app.replaceChildren();
   for (let i = 0; i < nodes.length; i += 1) app.append(nodes[i]);
-  const playing = Boolean(puzzle) && !gate && (mode === "solo" || mode === "echo");
+  const playing = Boolean(puzzle) && !gate && (mode === "solo" || mode === "echo" || mode === "sample");
   app.classList.toggle("is-play", playing);
   const resultShown = resultPanel.hidden !== true;
   const resultOpenPanel = resultShown && resultPanel.classList.contains("is-open");
